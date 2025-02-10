@@ -2,8 +2,8 @@ import { Client } from 'pg'
 
 export interface Env {
   USER: string
-  PGUSER: string
-  PGPASSWORD: string
+  NZ_USER: string
+  NZ_PASSWORD: string
 }
 
 export default {
@@ -15,8 +15,8 @@ export default {
     const ssl = params.has('ssl')
 
     var client = new Client({
-      user: env.PGUSER || env.USER,
-      password: env.PGPASSWORD,
+      user: env.NZ_USER || env.USER,
+      password: env.NZ_PASSWORD,
       ssl,
     })
     await client.connect()

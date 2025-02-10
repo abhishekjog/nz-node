@@ -15,7 +15,7 @@ const suite = new helper.Suite()
 suite.test('ConnectionParameters construction', function () {
   assert.ok(new ConnectionParameters(), 'with null config')
   assert.ok(new ConnectionParameters({ user: 'asdf' }), 'with config object')
-  assert.ok(new ConnectionParameters('postgres://localhost/postgres'), 'with connection string')
+  assert.ok(new ConnectionParameters('netezza://localhost/netezza'), 'with connection string')
 })
 
 var compare = function (actual, expected, type) {
@@ -61,7 +61,7 @@ suite.test('ConnectionParameters initializing from defaults with connectionStrin
   // Just changing this here doesn't actually work because it's no longer in scope when viewed inside of
   // of ConnectionParameters() so we have to pass in the defaults explicitly to test it
   defaults.connectionString =
-    'postgres://brians-are-the-best:mypassword@foo.bar.net:7777/scoobysnacks?options=-c geqo=off'
+    'netezza://brians-are-the-best:mypassword@foo.bar.net:7777/scoobysnacks?options=-c geqo=off'
   var subject = new ConnectionParameters(defaults)
   defaults.connectionString = original_value
   compare(subject, config, 'defaults-connectionString')
@@ -91,17 +91,17 @@ suite.test('ConnectionParameters initializing from config', function () {
 
 suite.test('ConnectionParameters initializing from config and config.connectionString', function () {
   var subject1 = new ConnectionParameters({
-    connectionString: 'postgres://test@host/db',
+    connectionString: 'netezza://test@host/db',
   })
   var subject2 = new ConnectionParameters({
-    connectionString: 'postgres://test@host/db?ssl=1',
+    connectionString: 'netezza://test@host/db?ssl=1',
   })
   var subject3 = new ConnectionParameters({
-    connectionString: 'postgres://test@host/db',
+    connectionString: 'netezza://test@host/db',
     ssl: true,
   })
   var subject4 = new ConnectionParameters({
-    connectionString: 'postgres://test@host/db?ssl=1',
+    connectionString: 'netezza://test@host/db?ssl=1',
     ssl: false,
   })
 
@@ -112,12 +112,12 @@ suite.test('ConnectionParameters initializing from config and config.connectionS
 })
 
 suite.test('escape spaces if present', function () {
-  var subject = new ConnectionParameters('postgres://localhost/post gres')
+  var subject = new ConnectionParameters('netezza://localhost/post gres')
   assert.equal(subject.database, 'post gres')
 })
 
 suite.test('do not double escape spaces', function () {
-  var subject = new ConnectionParameters('postgres://localhost/post%20gres')
+  var subject = new ConnectionParameters('netezza://localhost/post%20gres')
   assert.equal(subject.database, 'post gres')
 })
 
@@ -192,7 +192,7 @@ suite.test('builds dns string', async function () {
     user: 'brian',
     password: 'asdf',
     host: 'localhost',
-    port: 5432,
+    port: 5480,
   }
   var subject = new ConnectionParameters(config)
   const dnsHost = await getDNSHost(config.host)
@@ -212,7 +212,7 @@ suite.test('error when dns fails', function () {
     user: 'brian',
     password: 'asf',
     host: 'asdlfkjasldfkksfd#!$!!!!..com',
-    port: 5432,
+    port: 5480,
   }
   var subject = new ConnectionParameters(config)
   subject.getLibpqConnectionString(
@@ -228,7 +228,7 @@ suite.test('connecting to unix domain socket', function () {
     user: 'brian',
     password: 'asf',
     host: '/tmp/',
-    port: 5432,
+    port: 5480,
   }
   var subject = new ConnectionParameters(config)
   subject.getLibpqConnectionString(
@@ -246,7 +246,7 @@ suite.test('config contains quotes and backslashes', function () {
     user: 'not\\brian',
     password: "bad'chars",
     host: '/tmp/',
-    port: 5432,
+    port: 5480,
   }
   var subject = new ConnectionParameters(config)
   subject.getLibpqConnectionString(
@@ -278,11 +278,11 @@ suite.test('password contains  < and/or >  characters', function () {
     user: 'brian',
     password: 'hello<ther>e',
     host: 'localhost',
-    port: 5432,
-    database: 'postgres',
+    port: 5480,
+    database: 'netezza',
   }
   var connectionString =
-    'postgres://' +
+    'netezza://' +
     sourceConfig.user +
     ':' +
     sourceConfig.password +
@@ -320,7 +320,7 @@ suite.test('ssl is set on client', function () {
   var Client = require('../../../lib/client')
   var defaults = require('../../../lib/defaults')
   defaults.ssl = true
-  var c = new Client('postgres://user:password@host/database')
+  var c = new Client('netezza://user:password@host/database')
   assert(c.ssl, 'Client should have ssl enabled via defaults')
 })
 
@@ -334,8 +334,8 @@ suite.test('ssl is set on client', function () {
     user: 'brian',
     password: 'hello<ther>e',
     host: 'localhost',
-    port: 5432,
-    database: 'postgres',
+    port: 5480,
+    database: 'netezza',
     ssl: {
       sslmode: 'verify-ca',
       sslca: '/path/ca.pem',

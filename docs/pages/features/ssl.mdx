@@ -43,7 +43,7 @@ If you plan to use a combination of a database connection string from the enviro
 
 ```js
 const config = {
-  connectionString: 'postgres://user:password@host:port/db?sslmode=require',
+  connectionString: 'netezza://user:password@host:port/db?sslmode=require',
   // Beware! The ssl object is overwritten when parsing the connectionString
   ssl: {
     rejectUnauthorized: false,

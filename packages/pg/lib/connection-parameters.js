@@ -126,7 +126,7 @@ class ConnectionParameters {
 
   getLibpqConnectionString(cb) {
     var params = []
-    add(params, this, 'user')
+    add(params, this, 'username')
     add(params, this, 'password')
     add(params, this, 'port')
     add(params, this, 'application_name')
@@ -142,7 +142,7 @@ class ConnectionParameters {
     add(params, ssl, 'sslrootcert')
 
     if (this.database) {
-      params.push('dbname=' + quoteParamValue(this.database))
+      params.push('database=' + quoteParamValue(this.database))
     }
     if (this.replication) {
       params.push('replication=' + quoteParamValue(this.replication))

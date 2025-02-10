@@ -35,7 +35,7 @@ The rest of the changes are relatively minor & you likely wont need to do anythi
 
 - change default database name
 
-If a database name is not specified, available in the environment at `PGDATABASE`, or available at `pg.defaults`, we used to use the username of the process user as the name of the database. Now we will use the `user` property supplied to the client as the database name, if it exists. What this means is this:
+If a database name is not specified, available in the environment at `NZ_DATABASE`, or available at `pg.defaults`, we used to use the username of the process user as the name of the database. Now we will use the `user` property supplied to the client as the database name, if it exists. What this means is this:
 
 ```jsx
 new Client({

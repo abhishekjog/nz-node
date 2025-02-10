@@ -5,9 +5,9 @@ var assert = require('assert')
 const suite = new helper.Suite()
 const test = suite.test.bind(suite)
 
-var pguser = process.env['PGUSER'] || process.env.USER
-var pgdatabase = process.env['PGDATABASE'] || process.env.USER
-var pgport = process.env['PGPORT'] || 5432
+var pguser = process.env['NZ_USER'] || process.env.USER
+var pgdatabase = process.env['NZ_DATABASE'] || process.env.USER
+var pgport = process.env['NZ_PORT'] || 5480
 
 test('client settings', function () {
   test('defaults', function () {
@@ -63,7 +63,7 @@ test('client settings', function () {
 test('initializing from a config string', function () {
   test('uses connectionString property', function () {
     var client = new Client({
-      connectionString: 'postgres://brian:pass@host1:333/databasename',
+      connectionString: 'netezza://brian:pass@host1:333/databasename',
     })
     assert.equal(client.user, 'brian')
     assert.equal(client.password, 'pass')
@@ -73,7 +73,7 @@ test('initializing from a config string', function () {
   })
 
   test('uses the correct values from the config string', function () {
-    var client = new Client('postgres://brian:pass@host1:333/databasename')
+    var client = new Client('netezza://brian:pass@host1:333/databasename')
     assert.equal(client.user, 'brian')
     assert.equal(client.password, 'pass')
     assert.equal(client.host, 'host1')
@@ -82,7 +82,7 @@ test('initializing from a config string', function () {
   })
 
   test('uses the correct values from the config string with space in password', function () {
-    var client = new Client('postgres://brian:pass word@host1:333/databasename')
+    var client = new Client('netezza://brian:pass word@host1:333/databasename')
     assert.equal(client.user, 'brian')
     assert.equal(client.password, 'pass word')
     assert.equal(client.host, 'host1')
@@ -91,68 +91,68 @@ test('initializing from a config string', function () {
   })
 
   test('when not including all values the defaults are used', function () {
-    var client = new Client('postgres://host1')
-    assert.equal(client.user, process.env['PGUSER'] || process.env.USER)
-    assert.equal(client.password, process.env['PGPASSWORD'] || null)
+    var client = new Client('netezza://host1')
+    assert.equal(client.user, process.env['NZ_USER'] || process.env.USER)
+    assert.equal(client.password, process.env['NZ_PASSWORD'] || null)
     assert.equal(client.host, 'host1')
-    assert.equal(client.port, process.env['PGPORT'] || 5432)
-    assert.equal(client.database, process.env['PGDATABASE'] || process.env.USER)
+    assert.equal(client.port, process.env['NZ_PORT'] || 5480)
+    assert.equal(client.database, process.env['NZ_DATABASE'] || process.env.USER)
   })
 
   test('when not including all values the environment variables are used', function () {
-    var envUserDefined = process.env['PGUSER'] !== undefined
-    var envPasswordDefined = process.env['PGPASSWORD'] !== undefined
-    var envHostDefined = process.env['PGHOST'] !== undefined
-    var envPortDefined = process.env['PGPORT'] !== undefined
-    var envDBDefined = process.env['PGDATABASE'] !== undefined
+    var envUserDefined = process.env['NZ_USER'] !== undefined
+    var envPasswordDefined = process.env['NZ_PASSWORD'] !== undefined
+    var envHostDefined = process.env['NZ_HOST'] !== undefined
+    var envPortDefined = process.env['NZ_PORT'] !== undefined
+    var envDBDefined = process.env['NZ_DATABASE'] !== undefined
 
-    var savedEnvUser = process.env['PGUSER']
-    var savedEnvPassword = process.env['PGPASSWORD']
-    var savedEnvHost = process.env['PGHOST']
-    var savedEnvPort = process.env['PGPORT']
-    var savedEnvDB = process.env['PGDATABASE']
+    var savedEnvUser = process.env['NZ_USER']
+    var savedEnvPassword = process.env['NZ_PASSWORD']
+    var savedEnvHost = process.env['NZ_HOST']
+    var savedEnvPort = process.env['NZ_PORT']
+    var savedEnvDB = process.env['NZ_DATABASE']
 
-    process.env['PGUSER'] = 'utUser1'
-    process.env['PGPASSWORD'] = 'utPass1'
-    process.env['PGHOST'] = 'utHost1'
-    process.env['PGPORT'] = 5464
-    process.env['PGDATABASE'] = 'utDB1'
+    process.env['NZ_USER'] = 'utUser1'
+    process.env['NZ_PASSWORD'] = 'utPass1'
+    process.env['NZ_HOST'] = 'utHost1'
+    process.env['NZ_PORT'] = 5464
+    process.env['NZ_DATABASE'] = 'utDB1'
 
-    var client = new Client('postgres://host1')
-    assert.equal(client.user, process.env['PGUSER'])
-    assert.equal(client.password, process.env['PGPASSWORD'])
+    var client = new Client('netezza://host1')
+    assert.equal(client.user, process.env['NZ_USER'])
+    assert.equal(client.password, process.env['NZ_PASSWORD'])
     assert.equal(client.host, 'host1')
-    assert.equal(client.port, process.env['PGPORT'])
-    assert.equal(client.database, process.env['PGDATABASE'])
+    assert.equal(client.port, process.env['NZ_PORT'])
+    assert.equal(client.database, process.env['NZ_DATABASE'])
 
     if (envUserDefined) {
-      process.env['PGUSER'] = savedEnvUser
+      process.env['NZ_USER'] = savedEnvUser
     } else {
-      delete process.env['PGUSER']
+      delete process.env['NZ_USER']
     }
 
     if (envPasswordDefined) {
-      process.env['PGPASSWORD'] = savedEnvPassword
+      process.env['NZ_PASSWORD'] = savedEnvPassword
     } else {
-      delete process.env['PGPASSWORD']
+      delete process.env['NZ_PASSWORD']
     }
 
     if (envDBDefined) {
-      process.env['PGDATABASE'] = savedEnvDB
+      process.env['NZ_DATABASE'] = savedEnvDB
     } else {
-      delete process.env['PGDATABASE']
+      delete process.env['NZ_DATABASE']
     }
 
     if (envHostDefined) {
-      process.env['PGHOST'] = savedEnvHost
+      process.env['NZ_HOST'] = savedEnvHost
     } else {
-      delete process.env['PGHOST']
+      delete process.env['NZ_HOST']
     }
 
     if (envPortDefined) {
-      process.env['PGPORT'] = savedEnvPort
+      process.env['NZ_PORT'] = savedEnvPort
     } else {
-      delete process.env['PGPORT']
+      delete process.env['NZ_PORT']
     }
   })
 })

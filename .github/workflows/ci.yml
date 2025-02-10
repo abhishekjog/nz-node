@@ -32,7 +32,7 @@ jobs:
           POSTGRES_HOST_AUTH_METHOD: 'md5'
           POSTGRES_DB: ci_db_test
         ports:
-          - 5432:5432
+          - 5480:5480
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     strategy:
       fail-fast: false
@@ -47,10 +47,10 @@ jobs:
     name: Node.js ${{ matrix.node }}
     runs-on: ubuntu-latest
     env:
-      PGUSER: postgres
-      PGPASSWORD: postgres
-      PGHOST: localhost
-      PGDATABASE: ci_db_test
+      NZ_USER: postgres
+      NZ_PASSWORD: postgres
+      NZ_HOST: localhost
+      NZ_DATABASE: ci_db_test
       PGTESTNOSSL: 'true'
       SCRAM_TEST_PGUSER: scram_test
       SCRAM_TEST_PGPASSWORD: test4scram

@@ -23,11 +23,11 @@ const clearEnv = () => {
 
 suite.test('ConnectionParameters initialized from environment variables', function () {
   clearEnv()
-  process.env['PGHOST'] = 'local'
-  process.env['PGUSER'] = 'bmc2'
-  process.env['PGPORT'] = 7890
-  process.env['PGDATABASE'] = 'allyerbase'
-  process.env['PGPASSWORD'] = 'open'
+  process.env['NZ_HOST'] = 'local'
+  process.env['NZ_USER'] = 'bmc2'
+  process.env['NZ_PORT'] = 7890
+  process.env['NZ_DATABASE'] = 'allyerbase'
+  process.env['NZ_PASSWORD'] = 'open'
 
   var subject = new ConnectionParameters()
   assert.equal(subject.host, 'local', 'env host')
@@ -39,13 +39,13 @@ suite.test('ConnectionParameters initialized from environment variables', functi
 
 suite.test('ConnectionParameters initialized from mix', function () {
   clearEnv()
-  process.env['PGHOST'] = 'local'
-  process.env['PGUSER'] = 'bmc2'
-  process.env['PGPORT'] = 7890
-  process.env['PGDATABASE'] = 'allyerbase'
-  process.env['PGPASSWORD'] = 'open'
-  delete process.env['PGPASSWORD']
-  delete process.env['PGDATABASE']
+  process.env['NZ_HOST'] = 'local'
+  process.env['NZ_USER'] = 'bmc2'
+  process.env['NZ_PORT'] = 7890
+  process.env['NZ_DATABASE'] = 'allyerbase'
+  process.env['NZ_PASSWORD'] = 'open'
+  delete process.env['NZ_PASSWORD']
+  delete process.env['NZ_DATABASE']
   var subject = new ConnectionParameters({
     user: 'testing',
     database: 'zugzug',
@@ -59,7 +59,7 @@ suite.test('ConnectionParameters initialized from mix', function () {
 
 suite.test('connection string parsing', function () {
   clearEnv()
-  var string = 'postgres://brian:pw@boom:381/lala'
+  var string = 'netezza://brian:pw@boom:381/lala'
   var subject = new ConnectionParameters(string)
   assert.equal(subject.host, 'boom', 'string host')
   assert.equal(subject.user, 'brian', 'string user')
@@ -72,27 +72,27 @@ suite.test('connection string parsing - ssl', function () {
   // clear process.env
   clearEnv()
 
-  var string = 'postgres://brian:pw@boom:381/lala?ssl=true'
+  var string = 'netezza://brian:pw@boom:381/lala?ssl=true'
   var subject = new ConnectionParameters(string)
   assert.equal(subject.ssl, true, 'ssl')
 
-  string = 'postgres://brian:pw@boom:381/lala?ssl=1'
+  string = 'netezza://brian:pw@boom:381/lala?ssl=1'
   subject = new ConnectionParameters(string)
   assert.equal(subject.ssl, true, 'ssl')
 
-  string = 'postgres://brian:pw@boom:381/lala?other&ssl=true'
+  string = 'netezza://brian:pw@boom:381/lala?other&ssl=true'
   subject = new ConnectionParameters(string)
   assert.equal(subject.ssl, true, 'ssl')
 
-  string = 'postgres://brian:pw@boom:381/lala?ssl=0'
+  string = 'netezza://brian:pw@boom:381/lala?ssl=0'
   subject = new ConnectionParameters(string)
   assert.equal(!!subject.ssl, false, 'ssl')
 
-  string = 'postgres://brian:pw@boom:381/lala'
+  string = 'netezza://brian:pw@boom:381/lala'
   subject = new ConnectionParameters(string)
   assert.equal(!!subject.ssl, false, 'ssl')
 
-  string = 'postgres://brian:pw@boom:381/lala?ssl=no-verify'
+  string = 'netezza://brian:pw@boom:381/lala?ssl=no-verify'
   subject = new ConnectionParameters(string)
   assert.deepStrictEqual(subject.ssl, { rejectUnauthorized: false }, 'ssl')
 })

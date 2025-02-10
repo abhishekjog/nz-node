@@ -7,7 +7,7 @@ var parse = require('../').parse
 
 describe('parse', function () {
   it('using connection string in client constructor', function () {
-    var subject = parse('postgres://brian:pw@boom:381/lala')
+    var subject = parse('netezza://brian:pw@boom:381/lala')
     subject.user.should.equal('brian')
     subject.password.should.equal('pw')
     subject.host.should.equal('boom')
@@ -16,12 +16,12 @@ describe('parse', function () {
   })
 
   it('escape spaces if present', function () {
-    var subject = parse('postgres://localhost/post gres')
+    var subject = parse('netezza://localhost/post gres')
     subject.database.should.equal('post gres')
   })
 
   it('do not double escape spaces', function () {
-    var subject = parse('postgres://localhost/post%20gres')
+    var subject = parse('netezza://localhost/post%20gres')
     subject.database.should.equal('post gres')
   })
 
@@ -63,11 +63,11 @@ describe('parse', function () {
       user: 'brian',
       password: 'hello<ther>e',
       host: 'localhost',
-      port: 5432,
-      database: 'postgres',
+      port: 5480,
+      database: 'netezza',
     }
     var connectionString =
-      'postgres://' +
+      'netezza://' +
       sourceConfig.user +
       ':' +
       sourceConfig.password +
@@ -86,11 +86,11 @@ describe('parse', function () {
       user: 'brian',
       password: 'hello:pass:world',
       host: 'localhost',
-      port: 5432,
-      database: 'postgres',
+      port: 5480,
+      database: 'netezza',
     }
     var connectionString =
-      'postgres://' +
+      'netezza://' +
       sourceConfig.user +
       ':' +
       sourceConfig.password +
@@ -105,7 +105,7 @@ describe('parse', function () {
   })
 
   it('username or password contains weird characters', function () {
-    var strang = 'pg://my f%irst name:is&%awesome!@localhost:9000'
+    var strang = 'netezza://my f%irst name:is&%awesome!@localhost:9000'
     var subject = parse(strang)
     subject.user.should.equal('my f%irst name')
     subject.password.should.equal('is&%awesome!')
@@ -113,7 +113,7 @@ describe('parse', function () {
   })
 
   it('url is properly encoded', function () {
-    var encoded = 'pg://bi%25na%25%25ry%20:s%40f%23@localhost/%20u%2520rl'
+    var encoded = 'netezza://bi%25na%25%25ry%20:s%40f%23@localhost/%20u%2520rl'
     var subject = parse(encoded)
     subject.user.should.equal('bi%na%%ry ')
     subject.password.should.equal('s@f#')
@@ -128,18 +128,18 @@ describe('parse', function () {
   })
 
   it('no pathname returns null database', function () {
-    var subject = parse('pg://myhost')
+    var subject = parse('netezza://myhost')
     ;(subject.database === null).should.equal(true)
   })
 
   it('pathname of "/" returns null database', function () {
-    var subject = parse('pg://myhost/')
+    var subject = parse('netezza://myhost/')
     subject.host.should.equal('myhost')
     ;(subject.database === null).should.equal(true)
   })
 
   it('configuration parameter host', function () {
-    var subject = parse('pg://user:pass@/dbname?host=/unix/socket')
+    var subject = parse('netezza://user:pass@/dbname?host=/unix/socket')
     subject.user.should.equal('user')
     subject.password.should.equal('pass')
     subject.host.should.equal('/unix/socket')
@@ -147,13 +147,13 @@ describe('parse', function () {
   })
 
   it('configuration parameter host overrides url host', function () {
-    var subject = parse('pg://user:pass@localhost/dbname?host=/unix/socket')
+    var subject = parse('netezza://user:pass@localhost/dbname?host=/unix/socket')
     subject.database.should.equal('dbname')
     subject.host.should.equal('/unix/socket')
   })
 
   it('url with encoded socket', function () {
-    var subject = parse('pg://user:pass@%2Funix%2Fsocket/dbname')
+    var subject = parse('netezza://user:pass@%2Funix%2Fsocket/dbname')
     subject.user.should.equal('user')
     subject.password.should.equal('pass')
     subject.host.should.equal('/unix/socket')
@@ -161,7 +161,7 @@ describe('parse', function () {
   })
 
   it('url with real host and an encoded db name', function () {
-    var subject = parse('pg://user:pass@localhost/%2Fdbname')
+    var subject = parse('netezza://user:pass@localhost/%2Fdbname')
     subject.user.should.equal('user')
     subject.password.should.equal('pass')
     subject.host.should.equal('localhost')
@@ -169,7 +169,7 @@ describe('parse', function () {
   })
 
   it('configuration parameter host treats encoded host as part of the db name', function () {
-    var subject = parse('pg://user:pass@%2Funix%2Fsocket/dbname?host=localhost')
+    var subject = parse('netezza://user:pass@%2Funix%2Fsocket/dbname?host=localhost')
     subject.user.should.equal('user')
     subject.password.should.equal('pass')
     subject.host.should.equal('localhost')
@@ -177,48 +177,48 @@ describe('parse', function () {
   })
 
   it('configuration parameter application_name', function () {
-    var connectionString = 'pg:///?application_name=TheApp'
+    var connectionString = 'netezza:///?application_name=TheApp'
     var subject = parse(connectionString)
     subject.application_name.should.equal('TheApp')
   })
 
   it('configuration parameter fallback_application_name', function () {
-    var connectionString = 'pg:///?fallback_application_name=TheAppFallback'
+    var connectionString = 'netezza:///?fallback_application_name=TheAppFallback'
     var subject = parse(connectionString)
     subject.fallback_application_name.should.equal('TheAppFallback')
   })
 
   it('configuration parameter options', function () {
-    var connectionString = 'pg:///?options=-c geqo=off'
+    var connectionString = 'netezza:///?options=-c geqo=off'
     var subject = parse(connectionString)
     subject.options.should.equal('-c geqo=off')
   })
 
   it('configuration parameter ssl=true', function () {
-    var connectionString = 'pg:///?ssl=true'
+    var connectionString = 'netezza:///?ssl=true'
     var subject = parse(connectionString)
     subject.ssl.should.equal(true)
   })
 
   it('configuration parameter ssl=1', function () {
-    var connectionString = 'pg:///?ssl=1'
+    var connectionString = 'netezza:///?ssl=1'
     var subject = parse(connectionString)
     subject.ssl.should.equal(true)
   })
 
   it('configuration parameter ssl=0', function () {
-    var connectionString = 'pg:///?ssl=0'
+    var connectionString = 'netezza:///?ssl=0'
     var subject = parse(connectionString)
     subject.ssl.should.equal(false)
   })
 
   it('set ssl', function () {
-    var subject = parse('pg://myhost/db?ssl=1')
+    var subject = parse('netezza://myhost/db?ssl=1')
     subject.ssl.should.equal(true)
   })
 
   it('configuration parameter sslcert=/path/to/cert', function () {
-    var connectionString = 'pg:///?sslcert=' + __dirname + '/example.cert'
+    var connectionString = 'netezza:///?sslcert=' + __dirname + '/example.cert'
     var subject = parse(connectionString)
     subject.ssl.should.eql({
       cert: 'example cert\n',
@@ -226,7 +226,7 @@ describe('parse', function () {
   })
 
   it('configuration parameter sslkey=/path/to/key', function () {
-    var connectionString = 'pg:///?sslkey=' + __dirname + '/example.key'
+    var connectionString = 'netezza:///?sslkey=' + __dirname + '/example.key'
     var subject = parse(connectionString)
     subject.ssl.should.eql({
       key: 'example key\n',
@@ -234,7 +234,7 @@ describe('parse', function () {
   })
 
   it('configuration parameter sslrootcert=/path/to/ca', function () {
-    var connectionString = 'pg:///?sslrootcert=' + __dirname + '/example.ca'
+    var connectionString = 'netezza:///?sslrootcert=' + __dirname + '/example.ca'
     var subject = parse(connectionString)
     subject.ssl.should.eql({
       ca: 'example ca\n',
@@ -242,7 +242,7 @@ describe('parse', function () {
   })
 
   it('configuration parameter sslmode=no-verify', function () {
-    var connectionString = 'pg:///?sslmode=no-verify'
+    var connectionString = 'netezza:///?sslmode=no-verify'
     var subject = parse(connectionString)
     subject.ssl.should.eql({
       rejectUnauthorized: false,
@@ -250,37 +250,37 @@ describe('parse', function () {
   })
 
   it('configuration parameter sslmode=disable', function () {
-    var connectionString = 'pg:///?sslmode=disable'
+    var connectionString = 'netezza:///?sslmode=disable'
     var subject = parse(connectionString)
     subject.ssl.should.eql(false)
   })
 
   it('configuration parameter sslmode=prefer', function () {
-    var connectionString = 'pg:///?sslmode=prefer'
+    var connectionString = 'netezza:///?sslmode=prefer'
     var subject = parse(connectionString)
     subject.ssl.should.eql({})
   })
 
   it('configuration parameter sslmode=require', function () {
-    var connectionString = 'pg:///?sslmode=require'
+    var connectionString = 'netezza:///?sslmode=require'
     var subject = parse(connectionString)
     subject.ssl.should.eql({})
   })
 
   it('configuration parameter sslmode=verify-ca', function () {
-    var connectionString = 'pg:///?sslmode=verify-ca'
+    var connectionString = 'netezza:///?sslmode=verify-ca'
     var subject = parse(connectionString)
     subject.ssl.should.eql({})
   })
 
   it('configuration parameter sslmode=verify-full', function () {
-    var connectionString = 'pg:///?sslmode=verify-full'
+    var connectionString = 'netezza:///?sslmode=verify-full'
     var subject = parse(connectionString)
     subject.ssl.should.eql({})
   })
 
   it('configuration parameter ssl=true and sslmode=require still work with sslrootcert=/path/to/ca', function () {
-    var connectionString = 'pg:///?ssl=true&sslrootcert=' + __dirname + '/example.ca&sslmode=require'
+    var connectionString = 'netezza:///?ssl=true&sslrootcert=' + __dirname + '/example.ca&sslmode=require'
     var subject = parse(connectionString)
     subject.ssl.should.eql({
       ca: 'example ca\n',
@@ -288,21 +288,21 @@ describe('parse', function () {
   })
 
   it('allow other params like max, ...', function () {
-    var subject = parse('pg://myhost/db?max=18&min=4')
+    var subject = parse('netezza://myhost/db?max=18&min=4')
     subject.max.should.equal('18')
     subject.min.should.equal('4')
   })
 
   it('configuration parameter keepalives', function () {
-    var connectionString = 'pg:///?keepalives=1'
+    var connectionString = 'netezza:///?keepalives=1'
     var subject = parse(connectionString)
     subject.keepalives.should.equal('1')
   })
 
   it('unknown configuration parameter is passed into client', function () {
-    var connectionString = 'pg:///?ThereIsNoSuchPostgresParameter=1234'
+    var connectionString = 'netezza:///?ThereIsNoSuchNetezzaParameter=1234'
     var subject = parse(connectionString)
-    subject.ThereIsNoSuchPostgresParameter.should.equal('1234')
+    subject.ThereIsNoSuchNetezzaParameter.should.equal('1234')
   })
 
   it('do not override a config field with value from query string', function () {
@@ -313,13 +313,13 @@ describe('parse', function () {
   })
 
   it('return last value of repeated parameter', function () {
-    var connectionString = 'pg:///?keepalives=1&keepalives=0'
+    var connectionString = 'netezza:///?keepalives=1&keepalives=0'
     var subject = parse(connectionString)
     subject.keepalives.should.equal('0')
   })
 
   it('use the port specified in the query parameters', function () {
-    var connectionString = 'postgres:///?host=localhost&port=1234'
+    var connectionString = 'netezza:///?host=localhost&port=1234'
     var subject = parse(connectionString)
     subject.port.should.equal('1234')
   })

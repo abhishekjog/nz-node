@@ -17,14 +17,14 @@ MIT License
 ```js
 var parse = require('pg-connection-string').parse;
 
-var config = parse('postgres://someuser:somepassword@somehost:381/somedatabase')
+var config = parse('netezza://someuser:somepassword@somehost:381/somedatabase')
 ```
 
 The resulting config contains a subset of the following properties:
 
 * `user` - User with which to authenticate to the server
 * `password` - Corresponding password
-* `host` - Postgres server hostname or, for UNIX domain sockets, the socket filename
+* `host` - netezza server hostname or, for UNIX domain sockets, the socket filename
 * `port` - port on which to connect
 * `database` - Database name within the server
 * `client_encoding` - string encoding the client will use
@@ -40,7 +40,7 @@ The resulting config contains a subset of the following properties:
 The short summary of acceptable URLs is:
 
  * `socket:<path>?<query>` - UNIX domain socket
- * `postgres://<user>:<password>@<host>:<port>/<database>?<query>` - TCP connection
+ * `netezza://<user>:<password>@<host>:<port>/<database>?<query>` - TCP connection
 
 But see below for more details.
 
@@ -58,7 +58,7 @@ Query parameters follow a `?` character, including the following special query p
 
 ### TCP Connections
 
-TCP connections to the Postgres server are indicated with `pg:` or `postgres:` schemes (in fact, any scheme but `socket:` is accepted).
+TCP connections to the netezza server are indicated with `pg:` or `netezza:` schemes (in fact, any scheme but `socket:` is accepted).
 If username and password are included, they should be urlencoded.
 The database name, however, should *not* be urlencoded.
 

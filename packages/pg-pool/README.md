@@ -29,7 +29,7 @@ var pool2 = new Pool({
   database: 'postgres',
   user: 'brianc',
   password: 'secret!',
-  port: 5432,
+  port: 5480,
   ssl: true,
   max: 20, // set pool max size to 20
   idleTimeoutMillis: 1000, // close idle clients after 1 second
@@ -69,7 +69,7 @@ const config = {
 const pool = new Pool(config);
 
 /*
-  Transforms, 'postgres://DBuser:secret@DBHost:#####/myDB', into
+  Transforms, 'netezza://DBuser:secret@DBHost:#####/myDB', into
   config = {
     user: 'DBuser',
     password: 'secret',
@@ -301,10 +301,10 @@ setTimeout(function () {
 pg-pool & node-postgres support some of the same environment variables as `psql` supports.  The most common are:
 
 ```
-PGDATABASE=my_db
-PGUSER=username
-PGPASSWORD="my awesome password"
-PGPORT=5432
+NZ_DATABASE=my_db
+NZ_USER=username
+NZ_PASSWORD="my awesome password"
+NZ_PORT=5480
 PGSSLMODE=require
 ```
 

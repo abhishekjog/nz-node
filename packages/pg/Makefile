@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-connectionString=postgres://
+connectionString=netezza://
 
 params := $(connectionString)
 
@@ -13,7 +13,7 @@ all:
 	npm install
 
 help:
-	@echo "make test-all [connectionString=postgres://<your connection string>]"
+	@echo "make test-all [connectionString=netezza://<your connection string>]"
 
 test: test-unit
 

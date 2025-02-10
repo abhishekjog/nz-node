@@ -133,7 +133,7 @@ client.connect(function(err) {
 })
 
 var client2 = new Client()
-client2.connect('postgresql://user:password@host:5432/database?param=value', function(err) {
+client2.connect('postgresql://user:password@host:5480/database?param=value', function(err) {
   if(err) throw err
   
   console.log('connected with connection string!')
@@ -277,7 +277,7 @@ To run the tests you need a PostgreSQL backend reachable by typing `psql` with n
 An example of supplying a specific host the tests:
 
 ```sh
-$ PGHOST=blabla.mydatabasehost.com npm test
+$ NZ_HOST=blabla.mydatabasehost.com npm test
 ```
 
 

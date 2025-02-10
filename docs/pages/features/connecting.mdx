@@ -30,11 +30,11 @@ await client.end()
 To run the above program and specify which database to connect to we can invoke it like so:
 
 ```sh
-$ PGUSER=dbuser \
-  PGPASSWORD=secretpassword \
-  PGHOST=database.server.com \
-  PGPORT=3211 \
-  PGDATABASE=mydb \
+$ NZ_USER=dbuser \
+  NZ_PASSWORD=secretpassword \
+  NZ_HOST=database.server.com \
+  NZ_PORT=3211 \
+  NZ_DATABASE=mydb \
   node script.js
 ```
 
@@ -43,11 +43,11 @@ This allows us to write our programs without having to specify connection inform
 The default values for the environment variables used are:
 
 ```
-PGUSER=process.env.USER
-PGPASSWORD=null
-PGHOST=localhost
-PGPORT=5432
-PGDATABASE=process.env.USER
+NZ_USER=process.env.USER
+NZ_PASSWORD=null
+NZ_HOST=localhost
+NZ_PORT=5480
+NZ_DATABASE=process.env.USER
 ```
 
 ## Programmatic
@@ -97,7 +97,7 @@ const signerOptions = {
   },
   region: 'us-east-1',
   hostname: 'example.aslfdewrlk.us-east-1.rds.amazonaws.com',
-  port: 5432,
+  port: 5480,
   username: 'api-user',
 }
 

@@ -1,6 +1,6 @@
 'use strict'
 
-//Parse method copied from https://github.com/brianc/node-postgres
+//Parse method copied from https://github.com/brianc/node-netezza
 //Copyright (c) 2010-2014 Brian Carlson (brian.m.carlson@gmail.com)
 //MIT License
 
@@ -23,10 +23,10 @@ function parse(str) {
   }
 
   try {
-    result = new URL(str, 'postgres://base')
+    result = new URL(str, 'netezza://base')
   } catch (e) {
     // The URL is invalid so try again with a dummy host
-    result = new URL(str.replace('@/', '@___DUMMY___/'), 'postgres://base')
+    result = new URL(str.replace('@/', '@___DUMMY___/'), 'netezza://base')
     dummyHost = true
   }
 

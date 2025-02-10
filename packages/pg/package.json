@@ -1,7 +1,7 @@
 {
   "name": "pg",
   "version": "8.13.1",
-  "description": "PostgreSQL client - pure javascript & libpq with the same API",
+  "description": "Netezza client - pure javascript & libpq with the same API",
   "keywords": [
     "database",
     "libpq",
@@ -17,7 +17,7 @@
     "url": "git://github.com/brianc/node-postgres.git",
     "directory": "packages/pg"
   },
-  "author": "Brian Carlson <brian.m.carlson@gmail.com>",
+  "author": "Sagar Soni <sagarsoni1510@gmail.com>",
   "main": "./lib",
   "dependencies": {
     "pg-connection-string": "^2.7.0",

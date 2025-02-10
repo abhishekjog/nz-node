@@ -24,7 +24,7 @@ describe('connectSync', function () {
   })
 
   it('works with args', function () {
-    var args = 'host=' + (process.env.PGHOST || 'localhost')
+    var args = 'host=' + (process.env.NZ_HOST || 'localhost')
     Client().connectSync(args)
   })
 

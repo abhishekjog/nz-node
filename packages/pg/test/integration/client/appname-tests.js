@@ -76,7 +76,7 @@ suite.test('application_name from connection string', function (done) {
   if (process.argv[2]) {
     conf = new conParams(process.argv[2] + '?application_name=' + appName)
   } else {
-    conf = 'postgres://?application_name=' + appName
+    conf = 'netezza://?application_name=' + appName
   }
   getAppName(conf, function (res) {
     assert.strictEqual(res, appName)

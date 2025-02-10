@@ -79,7 +79,7 @@ suite.testAsync('sasl/scram fails when password is empty', async () => {
   const client = new pg.Client({
     ...config,
     // We use a password function here so the connection defaults do not
-    // override the empty string value with one from process.env.PGPASSWORD
+    // override the empty string value with one from process.env.NZ_PASSWORD
     password: () => '',
   })
   let usingSasl = false

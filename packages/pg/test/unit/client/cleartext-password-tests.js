@@ -21,7 +21,7 @@ suite.test('cleartext password auth does not crash with null password using pg-p
   process.env.PGPASSFILE = `${__dirname}/pgpass.file`
   var client = new helper.Client({
     host: 'foo',
-    port: 5432,
+    port: 5480,
     database: 'bar',
     user: 'baz',
     stream: new MemoryStream(),

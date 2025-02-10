@@ -10,12 +10,12 @@ Every field of the `config` object is entirely optional. A `Client` instance wil
 
 ```ts
 type Config = {
-  user?: string, // default process.env.PGUSER || process.env.USER
-  password?: string or function, //default process.env.PGPASSWORD
-  host?: string, // default process.env.PGHOST
-  port?: number, // default process.env.PGPORT
-  database?: string, // default process.env.PGDATABASE || user
-  connectionString?: string, // e.g. postgres://user:password@host:5432/database
+  user?: string, // default process.env.NZ_USER || process.env.USER
+  password?: string or function, //default process.env.NZ_PASSWORD
+  host?: string, // default process.env.NZ_HOST
+  port?: number, // default process.env.NZ_PORT
+  database?: string, // default process.env.NZ_DATABASE || user
+  connectionString?: string, // e.g. netezza://user:password@host:5480/database
   ssl?: any, // passed directly to node.TLSSocket, supports all tls.connect options
   types?: any, // custom type parsers
   statement_timeout?: number, // number of milliseconds before a statement in query will time out, default is no timeout

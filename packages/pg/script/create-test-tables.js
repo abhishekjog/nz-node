@@ -43,9 +43,9 @@ async function run() {
   await con.connect()
   await con.query('DROP TABLE IF EXISTS person')
   await con.query('CREATE TABLE person (id serial, name varchar(10), age integer)')
-  await con.query(
-    'INSERT INTO person (name, age) VALUES' + people.map((person) => ` ('${person.name}', ${person.age})`).join(',')
-  )
+  await con.query(people.map((person) => {
+    "INSERT INTO person (name, age) VALUES (" + `'${person.name}' , ${person.age}` +  ");"
+  }));
   await con.end()
   console.log('created test dataset')
 }

@@ -18,7 +18,7 @@ suite.test('default values are used in new clients', function () {
     user: process.env.USER,
     database: undefined,
     password: null,
-    port: 5432,
+    port: 5480,
     rows: 0,
     max: 10,
     binary: false,
@@ -34,7 +34,7 @@ suite.test('default values are used in new clients', function () {
   assert.same(client, {
     user: process.env.USER,
     password: null,
-    port: 5432,
+    port: 5480,
     database: process.env.USER,
   })
 })
