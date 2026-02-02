@@ -70,6 +70,13 @@ class Client extends EventEmitter {
     this._activeQuery = null
 
     this.enableChannelBinding = Boolean(c.enableChannelBinding) // set true to use SCRAM-SHA-256-PLUS when offered
+    
+    // Netezza-specific configuration
+    this.securityLevel = c.securityLevel || 0
+    this.pgOptions = c.pgOptions
+    this.appName = c.appName
+    this.netezzaDebug = c.debug || false
+    
     this.connection =
       c.connection ||
       new Connection({
@@ -78,6 +85,13 @@ class Client extends EventEmitter {
         keepAlive: c.keepAlive || false,
         keepAliveInitialDelayMillis: c.keepAliveInitialDelayMillis || 0,
         encoding: this.connectionParameters.client_encoding || 'utf8',
+        database: this.database,
+        user: this.user,
+        password: this.password,
+        securityLevel: this.securityLevel,
+        pgOptions: this.pgOptions,
+        appName: this.appName,
+        debug: this.netezzaDebug
       })
     this._queryQueue = []
     this.binary = c.binary || defaults.binary
@@ -158,12 +172,13 @@ class Client extends EventEmitter {
       con.connect(this.port, this.host)
     }
 
-    // once connection is established send startup message
+    // once connection is established, Netezza handshake is performed in connection.js
     con.on('connect', function () {
-      if (self.ssl) {
-        con.requestSsl()
-      } else {
-        con.startup(self.getStartupConf())
+      // Netezza handshake complete, attach listeners and mark as connected
+      self._connecting = false
+      self._connected = true
+      if (self._connectionCallback) {
+        self._connectionCallback(null)
       }
     })
 

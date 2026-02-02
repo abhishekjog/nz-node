@@ -4,12 +4,13 @@ const EventEmitter = require('events').EventEmitter
 
 const { parse, serialize } = require('pg-protocol')
 const { getStream, getSecureStream } = require('./stream')
+const NetezzaHandshake = require('./netezza-handshake')
 
 const flushBuffer = serialize.flush()
 const syncBuffer = serialize.sync()
 const endBuffer = serialize.end()
 
-// TODO(bmc) support binary mode at some point
+// Netezza-specific connection implementation
 class Connection extends EventEmitter {
   constructor(config) {
     super()
@@ -27,6 +28,16 @@ class Connection extends EventEmitter {
     this.ssl = config.ssl || false
     this._ending = false
     this._emitMessage = false
+    
+    // Netezza connection options
+    this.database = config.database
+    this.user = config.user
+    this.password = config.password
+    this.securityLevel = config.securityLevel || 0
+    this.pgOptions = config.pgOptions
+    this.appName = config.appName
+    this.debug = config.debug || false
+    
     const self = this
     this.on('newListener', function (eventName) {
       if (eventName === 'message') {
@@ -46,7 +57,15 @@ class Connection extends EventEmitter {
       if (self._keepAlive) {
         self.stream.setKeepAlive(true, self._keepAliveInitialDelayMillis)
       }
-      self.emit('connect')
+      
+      // Always perform Netezza handshake (this is a Netezza driver)
+      self._performNetezzaHandshake()
+        .then(() => {
+          self.emit('connect')
+        })
+        .catch((err) => {
+          self.emit('error', err)
+        })
     })
 
     const reportStreamError = function (error) {
@@ -105,6 +124,26 @@ class Connection extends EventEmitter {
 
       self.emit('sslconnect')
     })
+  }
+
+  async _performNetezzaHandshake() {
+    const handshake = new NetezzaHandshake(this.stream, this.ssl, {
+      appName: this.appName,
+      debug: this.debug
+    })
+
+    try {
+      await handshake.startup(
+        this.database,
+        this.securityLevel,
+        this.user,
+        this.password,
+        this.pgOptions
+      )
+      return true
+    } catch (error) {
+      throw new Error(`Netezza handshake failed: ${error.message}`)
+    }
   }
 
   attachListeners(stream) {
