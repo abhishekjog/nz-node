@@ -37,7 +37,12 @@ class Connection extends EventEmitter {
     this.pgOptions = config.pgOptions
     this.appName = config.appName
     this.debug = config.debug || false
-    
+
+    // Log SSL configuration
+    if (this.debug) {
+      console.log('[Connection] SSL config:', this.ssl)
+      console.log('[Connection] Security level:', this.securityLevel)
+    }
     const self = this
     this.on('newListener', function (eventName) {
       if (eventName === 'message') {
@@ -57,10 +62,12 @@ class Connection extends EventEmitter {
       if (self._keepAlive) {
         self.stream.setKeepAlive(true, self._keepAliveInitialDelayMillis)
       }
-      
+
       // Always perform Netezza handshake (this is a Netezza driver)
-      self._performNetezzaHandshake()
-        .then(() => {
+      self
+        ._performNetezzaHandshake()
+        .then((result) => {
+          // Emit connect event - client will be marked as connected and can start sending queries
           self.emit('connect')
         })
         .catch((err) => {
@@ -78,6 +85,9 @@ class Connection extends EventEmitter {
     this.stream.on('error', reportStreamError)
 
     this.stream.on('close', function () {
+      if (self.debug) {
+        console.log('[Connection] Stream closed')
+      }
       self.emit('end')
     })
 
@@ -127,27 +137,41 @@ class Connection extends EventEmitter {
   }
 
   async _performNetezzaHandshake() {
+    if (this.debug) {
+      console.log('[Connection] Initiating Netezza handshake protocol')
+    }
+
     const handshake = new NetezzaHandshake(this.stream, this.ssl, {
       appName: this.appName,
-      debug: this.debug
+      debug: this.debug,
     })
 
     try {
-      await handshake.startup(
+      const result = await handshake.startup(
         this.database,
         this.securityLevel,
         this.user,
         this.password,
         this.pgOptions
       )
-      return true
+      if (this.debug) {
+        console.log('[Connection] Netezza handshake completed')
+      }
+      return result
     } catch (error) {
+      if (this.debug) {
+        console.error('[Connection] Netezza handshake failed:', error.message)
+      }
       throw new Error(`Netezza handshake failed: ${error.message}`)
     }
   }
 
   attachListeners(stream) {
+    const self = this
     parse(stream, (msg) => {
+      if (self.debug) {
+        console.log('[Connection] Received message:', msg.name, msg.length ? `(${msg.length} bytes)` : '')
+      }
       const eventName = msg.name === 'error' ? 'errorMessage' : msg.name
       if (this._emitMessage) {
         this.emit('message', msg)
@@ -182,12 +206,21 @@ class Connection extends EventEmitter {
 
   _send(buffer) {
     if (!this.stream.writable) {
+      if (this.debug) {
+        console.log('[Connection] Stream not writable, cannot send')
+      }
       return false
+    }
+    if (this.debug) {
+      console.log(`[Connection] Sending ${buffer.length} bytes to server`)
     }
     return this.stream.write(buffer)
   }
 
   query(text) {
+    if (this.debug) {
+      console.log(`[Connection] Sending query: ${text}`)
+    }
     this._send(serialize.query(text))
   }
 
