@@ -433,10 +433,8 @@ class Client extends EventEmitter {
     // delegate rowDescription to active query
     const activeQuery = this._getActiveQuery()
     if (!activeQuery) {
-      // This can happen if an error was received before rowDescription
-      // In Netezza, error messages may be followed by other protocol messages
       if (this.netezzaDebug) {
-        console.log('[Client] Ignoring rowDescription - no active query (likely after error)')
+        console.log('[Client] Ignoring rowDescription')
       }
       return
     }
@@ -448,7 +446,7 @@ class Client extends EventEmitter {
     const activeQuery = this._getActiveQuery()
     if (!activeQuery) {
       if (this.netezzaDebug) {
-        console.log('[Client] Ignoring dataRow - no active query')
+        console.log('[Client] Ignoring dataRow')
       }
       return
     }
@@ -460,7 +458,7 @@ class Client extends EventEmitter {
     const activeQuery = this._getActiveQuery()
     if (!activeQuery) {
       if (this.netezzaDebug) {
-        console.log('[Client] Ignoring portalSuspended - no active query')
+        console.log('[Client] Ignoring portalSuspended')
       }
       return
     }
@@ -472,7 +470,7 @@ class Client extends EventEmitter {
     const activeQuery = this._getActiveQuery()
     if (!activeQuery) {
       if (this.netezzaDebug) {
-        console.log('[Client] Ignoring emptyQuery - no active query')
+        console.log('[Client] Ignoring emptyQuery ')
       }
       return
     }

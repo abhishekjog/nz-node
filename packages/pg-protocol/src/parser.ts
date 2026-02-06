@@ -34,7 +34,9 @@ const CODE_LENGTH = 1
 // NOT include the code in the length
 const LEN_LENGTH = 4
 
-const HEADER_LENGTH = CODE_LENGTH + LEN_LENGTH
+// Netezza has 4 extra bytes between code and length
+const NETEZZA_OFFSET = 4
+const NETEZZA_HEADER_LENGTH = CODE_LENGTH + NETEZZA_OFFSET + LEN_LENGTH
 
 // A placeholder for a `BackendMessage`’s length value that will be set after construction.
 const LATEINIT_LENGTH = -1
@@ -95,14 +97,14 @@ export class Parser {
     this.mergeBuffer(buffer)
     const bufferFullLength = this.bufferOffset + this.bufferLength
     let offset = this.bufferOffset
-    while (offset + HEADER_LENGTH <= bufferFullLength) {
+    while (offset + NETEZZA_HEADER_LENGTH <= bufferFullLength) {
       // code is 1 byte long - it identifies the message type
       const code = this.buffer[offset]
-      // length is 1 Uint32BE - it is the length of the message EXCLUDING the code
-      const length = this.buffer.readUInt32BE(offset + CODE_LENGTH)
-      const fullMessageLength = CODE_LENGTH + length
+      // length is 1 Uint32BE - it is the length of the message EXCLUDING the code and offset bytes
+      const length = this.buffer.readUInt32BE(offset + CODE_LENGTH + NETEZZA_OFFSET)
+      const fullMessageLength = CODE_LENGTH + NETEZZA_OFFSET + length
       if (fullMessageLength + offset <= bufferFullLength) {
-        const message = this.handlePacket(offset + HEADER_LENGTH, code, length, this.buffer)
+        const message = this.handlePacket(offset + NETEZZA_HEADER_LENGTH, code, length, this.buffer)
         callback(message)
         offset += fullMessageLength
       } else {

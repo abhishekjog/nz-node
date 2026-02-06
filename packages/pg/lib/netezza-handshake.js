@@ -178,6 +178,9 @@ class NetezzaHandshake {
         this.log(`Returning ${remainingBuffer.length} bytes of remaining buffer data`)
       }
 
+      this.cleanup()
+      this.log('Cleaned up handshake data handler')
+
       // Return the stream and other info
       return {
         success: true,
@@ -371,13 +374,14 @@ class NetezzaHandshake {
 
       const tlsSocket = tls.connect(tlsOptions)
 
-      tlsSocket.once('secureConnect', async () => {
+      tlsSocket.once('secureConnect', () => {
         this.log('TLS connection established')
+        // Update stream reference to the TLS socket
         this.stream = tlsSocket
         this.setupDataHandler()
-        // Give the TLS connection a moment to stabilize
-        await new Promise((r) => setTimeout(r, 100))
-        resolve()
+        setTimeout(() => {
+          resolve()
+        }, 50)
       })
 
       tlsSocket.once('error', (err) => {
