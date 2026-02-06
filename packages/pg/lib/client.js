@@ -70,13 +70,11 @@ class Client extends EventEmitter {
     this._activeQuery = null
 
     this.enableChannelBinding = Boolean(c.enableChannelBinding) // set true to use SCRAM-SHA-256-PLUS when offered
-    
     // Netezza-specific configuration
     this.securityLevel = c.securityLevel || 0
     this.pgOptions = c.pgOptions
     this.appName = c.appName
     this.netezzaDebug = c.debug || false
-    
     this.connection =
       c.connection ||
       new Connection({
@@ -91,7 +89,7 @@ class Client extends EventEmitter {
         securityLevel: this.securityLevel,
         pgOptions: this.pgOptions,
         appName: this.appName,
-        debug: this.netezzaDebug
+        debug: this.netezzaDebug,
       })
     this._queryQueue = []
     this.binary = c.binary || defaults.binary
@@ -155,6 +153,13 @@ class Client extends EventEmitter {
     }
     this._connecting = true
 
+    if (this.netezzaDebug) {
+      console.log('[Client] Connecting to Netezza server...')
+      console.log(`[Client] Host: ${this.host}:${this.port}`)
+      console.log(`[Client] Database: ${this.database}`)
+      console.log(`[Client] User: ${this.user}`)
+    }
+
     if (this._connectionTimeoutMillis > 0) {
       this.connectionTimeoutHandle = setTimeout(() => {
         con._ending = true
@@ -175,6 +180,9 @@ class Client extends EventEmitter {
     // once connection is established, Netezza handshake is performed in connection.js
     con.on('connect', function () {
       // Netezza handshake complete, attach listeners and mark as connected
+      if (self.netezzaDebug) {
+        console.log('[Client] Connection established successfully')
+      }
       self._connecting = false
       self._connected = true
       if (self._connectionCallback) {
@@ -423,22 +431,50 @@ class Client extends EventEmitter {
 
   _handleRowDescription(msg) {
     // delegate rowDescription to active query
-    this._getActiveQuery().handleRowDescription(msg)
+    const activeQuery = this._getActiveQuery()
+    if (!activeQuery) {
+      if (this.netezzaDebug) {
+        console.log('[Client] Ignoring rowDescription')
+      }
+      return
+    }
+    activeQuery.handleRowDescription(msg)
   }
 
   _handleDataRow(msg) {
     // delegate dataRow to active query
-    this._getActiveQuery().handleDataRow(msg)
+    const activeQuery = this._getActiveQuery()
+    if (!activeQuery) {
+      if (this.netezzaDebug) {
+        console.log('[Client] Ignoring dataRow')
+      }
+      return
+    }
+    activeQuery.handleDataRow(msg)
   }
 
   _handlePortalSuspended(msg) {
     // delegate portalSuspended to active query
-    this._getActiveQuery().handlePortalSuspended(this.connection)
+    const activeQuery = this._getActiveQuery()
+    if (!activeQuery) {
+      if (this.netezzaDebug) {
+        console.log('[Client] Ignoring portalSuspended')
+      }
+      return
+    }
+    activeQuery.handlePortalSuspended(this.connection)
   }
 
   _handleEmptyQuery(msg) {
     // delegate emptyQuery to active query
-    this._getActiveQuery().handleEmptyQuery(this.connection)
+    const activeQuery = this._getActiveQuery()
+    if (!activeQuery) {
+      if (this.netezzaDebug) {
+        console.log('[Client] Ignoring emptyQuery ')
+      }
+      return
+    }
+    activeQuery.handleEmptyQuery(this.connection)
   }
 
   _handleCommandComplete(msg) {

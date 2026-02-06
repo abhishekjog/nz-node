@@ -11,6 +11,7 @@
 const crypto = require('crypto')
 const os = require('os')
 const path = require('path')
+const tls = require('tls')
 
 // Connection Protocol Versions
 const CP_VERSION_1 = 1
@@ -61,11 +62,11 @@ const IPS_CLIENT = 1
 const NPSCLIENT_TYPE_NODE = 15 // Custom type for Node.js
 
 // Protocol Message Types
-const AUTHENTICATION_REQUEST = 'R'.charCodeAt(0)
-const ERROR_RESPONSE = 'E'.charCodeAt(0)
-const NOTICE_RESPONSE = 'N'.charCodeAt(0)
-const BACKEND_KEY_DATA = 'K'.charCodeAt(0)
-const READY_FOR_QUERY = 'Z'.charCodeAt(0)
+const AUTHENTICATION_REQUEST = 'R'.codePointAt(0)
+const ERROR_RESPONSE = 'E'.codePointAt(0)
+const NOTICE_RESPONSE = 'N'.codePointAt(0)
+const BACKEND_KEY_DATA = 'K'.codePointAt(0)
+const READY_FOR_QUERY = 'Z'.codePointAt(0)
 
 const NULL_BYTE = Buffer.from([0])
 
@@ -76,14 +77,34 @@ class NetezzaHandshake {
     this.hsVersion = null
     this.protocol1 = null
     this.protocol2 = null
-    
+
     // Guardium/audit information
     this.clientOS = os.platform()
     this.clientOSUser = os.userInfo().username
     this.clientHostName = os.hostname()
     this.appName = options.appName || path.basename(process.argv[1] || 'node')
-    
+
     this.debug = options.debug || false
+
+    // Buffer for incoming data during handshake
+    this.buffer = Buffer.alloc(0)
+    this.dataHandler = null
+    this.setupDataHandler()
+  }
+
+  setupDataHandler() {
+    this.dataHandler = (chunk) => {
+      this.buffer = Buffer.concat([this.buffer, chunk])
+      this.log(`Buffered ${chunk.length} bytes, total buffer: ${this.buffer.length} bytes`)
+    }
+    this.stream.on('data', this.dataHandler)
+  }
+
+  cleanup() {
+    if (this.dataHandler) {
+      this.stream.removeListener('data', this.dataHandler)
+      this.dataHandler = null
+    }
   }
 
   log(message, ...args) {
@@ -113,57 +134,85 @@ class NetezzaHandshake {
 
   async startup(database, securityLevel, user, password, pgOptions) {
     try {
+      this.log('=== Starting Netezza Connection Handshake ===')
+      this.log(`Database: ${database || 'default'}`)
+      this.log(`User: ${user}`)
+      this.log(`Security Level: ${securityLevel}`)
+
       // Step 1: Negotiate handshake version
-      this.log('Starting handshake negotiation')
-      if (!await this.negotiateHandshake()) {
+      this.log('\n[Step 1] Negotiating handshake version...')
+      if (!(await this.negotiateHandshake())) {
         throw new Error('Handshake negotiation failed')
       }
+      this.log(`Handshake version negotiated: CP_VERSION_${this.hsVersion}`)
 
       // Step 2: Send handshake information
-      this.log('Sending handshake information')
-      if (!await this.sendHandshakeInfo(database, securityLevel, user, pgOptions)) {
+      this.log('\n[Step 2] Sending handshake information...')
+      if (!(await this.sendHandshakeInfo(database, securityLevel, user, pgOptions))) {
         throw new Error('Failed to send handshake information')
       }
+      this.log(' Handshake information sent successfully')
 
       // Step 3: Authenticate
-      this.log('Authenticating')
-      if (!await this.authenticate(password)) {
+      this.log('\n[Step 3] Authenticating user...')
+      if (!(await this.authenticate(password))) {
         throw new Error('Authentication failed')
       }
+      this.log('Authentication successful')
 
       // Step 4: Wait for connection complete
-      this.log('Waiting for connection complete')
-      if (!await this.waitConnectionComplete()) {
+      this.log('\n[Step 4] Waiting for connection ready signal...')
+      if (!(await this.waitConnectionComplete())) {
         throw new Error('Connection completion failed')
       }
+      this.log(' Connection ready')
 
-      this.log('Netezza handshake successful')
-      return true
+      this.log('\n=== Netezza Handshake Completed Successfully ===')
+      this.log(`Protocol Version: ${this.protocol1}.${this.protocol2}`)
+
+      // Return any remaining buffer data so it can be processed after listeners are attached
+      const remainingBuffer = this.buffer
+      this.buffer = Buffer.alloc(0)
+
+      if (remainingBuffer.length > 0) {
+        this.log(`Returning ${remainingBuffer.length} bytes of remaining buffer data`)
+      }
+
+      this.cleanup()
+      this.log('Cleaned up handshake data handler')
+
+      // Return the stream and other info
+      return {
+        success: true,
+        stream: this.stream,
+        remainingBuffer,
+        needsInitialization: true,
+      }
     } catch (error) {
-      this.log('Handshake error:', error.message)
+      this.log('\nHandshake Failed:', error.message)
+      // Clean up on error too
+      this.cleanup()
       throw error
     }
   }
 
   async negotiateHandshake() {
     let version = CP_VERSION_6
-    
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       this.log(`Trying handshake version: ${version}`)
-      
+
       // Send handshake version
-      const payload = Buffer.concat([
-        this.packShort(HSV2_CLIENT_BEGIN),
-        this.packShort(version)
-      ])
-      
+      const payload = Buffer.concat([this.packShort(HSV2_CLIENT_BEGIN), this.packShort(version)])
+
       this.stream.write(this.packInt(payload.length + 4))
       this.stream.write(payload)
-      
+      this.log('Handshake request sent')
+
       // Wait for response
       const response = await this.readBytes(1)
-      this.log(`Handshake response: ${response.toString()}`)
-      
+      this.log(`Handshake response: ${response.toString()} (${response[0]})`)
+
       if (response.toString() === 'N') {
         // Accepted
         this.hsVersion = version
@@ -173,7 +222,9 @@ class NetezzaHandshake {
         // Server suggests different version
         const suggestedVersion = await this.readBytes(1)
         const versionChar = suggestedVersion.toString()
-        
+
+        this.log(`Suggested version: ${suggestedVersion}`)
+        this.log(`Server suggested version: ${versionChar}`)
         if (versionChar === '2') version = CP_VERSION_2
         else if (versionChar === '3') version = CP_VERSION_3
         else if (versionChar === '4') version = CP_VERSION_4
@@ -191,17 +242,17 @@ class NetezzaHandshake {
 
   async sendHandshakeInfo(database, securityLevel, user, pgOptions) {
     // Send database name first
-    if (!await this.sendDatabase(database)) {
+    if (!(await this.sendDatabase(database))) {
+      return false
+    }
+
+    // Set protocol version BEFORE security negotiation
+    if (!this.setNextDataProtocol()) {
       return false
     }
 
     // Handle SSL negotiation if needed
-    if (!await this.secureSession(securityLevel)) {
-      return false
-    }
-
-    // Set protocol version
-    if (!this.setNextDataProtocol()) {
+    if (!(await this.secureSession(securityLevel))) {
       return false
     }
 
@@ -217,27 +268,24 @@ class NetezzaHandshake {
 
   async sendDatabase(database) {
     if (!database) {
+      this.log('No database specified, skipping database selection')
       return true
     }
 
+    this.log(`Sending database name: ${database}`)
     const dbBuffer = Buffer.from(database, 'utf8')
-    const payload = Buffer.concat([
-      this.packShort(HSV2_DB),
-      dbBuffer,
-      NULL_BYTE
-    ])
+    const payload = Buffer.concat([this.packShort(HSV2_DB), dbBuffer, NULL_BYTE])
 
     this.stream.write(this.packInt(payload.length + 4))
     this.stream.write(payload)
 
     const response = await this.readBytes(1)
-    
     if (response.toString() === 'N') {
+      this.log(' Database accepted by server')
       return true
     } else if (response[0] === ERROR_RESPONSE) {
       throw new Error('Database authentication error')
     }
-    
     return false
   }
 
@@ -263,21 +311,88 @@ class NetezzaHandshake {
     // 1 - Only Unsecured
     // 2 - Preferred Secured
     // 3 - Only Secured
-    
-    if (!this.ssl || securityLevel === 1) {
-      // No SSL required
-      return true
-    }
 
-    // For now, implement basic SSL negotiation
-    // Full SSL implementation would require more complex logic
-    this.log(`Security level: ${securityLevel}`)
-    return true
+    securityLevel = securityLevel || 0
+    const securityLevelNames = ['Preferred Unsecured', 'Only Unsecured', 'Preferred Secured', 'Only Secured']
+    this.log(`Negotiating SSL/TLS: ${securityLevelNames[securityLevel]} (level ${securityLevel})`)
+
+    // Send SSL negotiation message
+    const payload = Buffer.concat([this.packShort(HSV2_SSL_NEGOTIATE), this.packInt(securityLevel)])
+
+    this.stream.write(this.packInt(payload.length + 4))
+    this.stream.write(payload)
+    this.log('Sent SSL negotiation request to server')
+
+    // Wait for response
+    const response = await this.readBytes(1)
+    const responseChar = String.fromCharCode(response[0])
+    this.log(`Server SSL response: '${responseChar}'`)
+
+    if (responseChar === 'N') {
+      // Server accepts unsecured connection
+      this.log('Server accepted unsecured connection')
+      return true
+    } else if (responseChar === 'S') {
+      // Server wants SSL
+      this.log('Server requires SSL/TLS connection')
+
+      // Send SSL connect message
+      const connectPayload = Buffer.concat([this.packShort(HSV2_SSL_CONNECT), this.packInt(securityLevel)])
+
+      this.stream.write(this.packInt(connectPayload.length + 4))
+      this.stream.write(connectPayload)
+      this.log('Sent SSL connect message')
+
+      // Upgrade to TLS
+      this.log('Upgrading connection to TLS...')
+      await this.upgradeToTLS()
+
+      this.log('TLS connection established successfully')
+      return true
+    } else if (responseChar === 'E') {
+      throw new Error('Server rejected security negotiation')
+    } else {
+      throw new Error(`Unknown SSL negotiation response: ${responseChar}`)
+    }
+  }
+
+  async upgradeToTLS() {
+    return new Promise((resolve, reject) => {
+      // Remove existing data handler
+      this.cleanup()
+
+      const tlsOptions = {
+        socket: this.stream,
+        rejectUnauthorized: this.ssl && this.ssl.rejectUnauthorized !== false,
+      }
+
+      if (this.ssl && typeof this.ssl === 'object') {
+        if (this.ssl.ca) tlsOptions.ca = this.ssl.ca
+        if (this.ssl.cert) tlsOptions.cert = this.ssl.cert
+        if (this.ssl.key) tlsOptions.key = this.ssl.key
+      }
+
+      const tlsSocket = tls.connect(tlsOptions)
+
+      tlsSocket.once('secureConnect', () => {
+        this.log('TLS connection established')
+        // Update stream reference to the TLS socket
+        this.stream = tlsSocket
+        this.setupDataHandler()
+        setTimeout(() => {
+          resolve()
+        }, 50)
+      })
+
+      tlsSocket.once('error', (err) => {
+        reject(new Error(`TLS upgrade failed: ${err.message}`))
+      })
+    })
   }
 
   async sendHandshakeVersion2(user, pgOptions) {
     const userBuffer = Buffer.from(user, 'utf8')
-    
+
     const steps = [
       { opcode: HSV2_USER, data: Buffer.concat([userBuffer, NULL_BYTE]) },
       { opcode: HSV2_PROTOCOL, data: Buffer.concat([this.packShort(this.protocol1), this.packShort(this.protocol2)]) },
@@ -370,16 +485,27 @@ class NetezzaHandshake {
   }
 
   async authenticate(password) {
-    const response = await this.readBytes(1)
-    
+    let response = await this.readBytes(1)
+    if (response.toString() === 'N') {
+      this.log('Received acknowledgment, reading authentication request...')
+      response = await this.readBytes(1)
+    }
+
     if (response[0] !== AUTHENTICATION_REQUEST) {
-      throw new Error('Expected authentication request')
+      throw new Error(`Expected authentication request, got: ${response.toString()} (${response[0]})`)
     }
 
     const authType = this.unpackInt(await this.readBytes(4))
-    this.log(`Authentication type: ${authType}`)
+    const authTypeNames = {
+      0: 'AUTH_REQ_OK (no authentication required)',
+      3: 'AUTH_REQ_PASSWORD (plain text)',
+      5: 'AUTH_REQ_MD5 (MD5 hashed)',
+      6: 'AUTH_REQ_SHA256 (SHA256 hashed)',
+    }
+    this.log(`Server requested authentication: ${authTypeNames[authType] || `Unknown type ${authType}`}`)
 
     if (authType === AUTH_REQ_OK) {
+      this.log('No authentication required')
       return true
     }
 
@@ -387,10 +513,11 @@ class NetezzaHandshake {
 
     if (authType === AUTH_REQ_PASSWORD) {
       // Plain password
-      this.log('Sending plain password')
+      this.log('Sending plain text password...')
       const payload = Buffer.concat([passwordBuffer, NULL_BYTE])
       this.stream.write(this.packInt(payload.length + 4))
       this.stream.write(payload)
+      this.log('Password sent')
     } else if (authType === AUTH_REQ_MD5) {
       // MD5 password
       this.log('Sending MD5 password')
@@ -421,53 +548,153 @@ class NetezzaHandshake {
   }
 
   async waitConnectionComplete() {
+    this.log('Waiting for server messages...')
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const response = await this.readBytes(1)
       const msgType = response[0]
+      const msgChar = String.fromCharCode(msgType)
+      this.log(`Received message type '${msgChar}' (0x${msgType.toString(16)})`)
 
-      if (msgType !== AUTHENTICATION_REQUEST) {
-        await this.readBytes(4) // Skip message type length
-        const length = this.unpackInt(await this.readBytes(4))
-        
-        if (msgType === NOTICE_RESPONSE) {
-          const notice = await this.readBytes(length)
-          this.log('Notice:', notice.toString('utf8'))
-        } else if (msgType === BACKEND_KEY_DATA) {
+      // Note: In Netezza handshake, messages have non-standard format
+      // For messages other than R, N, E: read and discard 8 bytes
+
+      if (msgType !== AUTHENTICATION_REQUEST && msgType !== NOTICE_RESPONSE && msgType !== ERROR_RESPONSE) {
+        // Read and discard 8 bytes
+        await this.readBytes(8)
+      }
+
+      switch (msgType) {
+        case AUTHENTICATION_REQUEST: {
+          // 'R' - Authentication request
+          const authType = this.unpackInt(await this.readBytes(4))
+          if (authType === AUTH_REQ_OK) {
+            this.log('Authentication confirmed by server (AUTH_REQ_OK)')
+          } else {
+            this.log(`Unexpected auth type during completion: ${authType}`)
+          }
+          break
+        }
+
+        case BACKEND_KEY_DATA: {
+          // 'K' - Backend key data: After discarding 8 bytes, read 8 more (4 for PID, 4 for key)
           const pid = this.unpackInt(await this.readBytes(4))
           const key = this.unpackInt(await this.readBytes(4))
-          this.log(`Backend PID: ${pid}, Key: ${key}`)
-        } else if (msgType === READY_FOR_QUERY) {
-          this.log('Connection ready')
+          this.log(`Backend Key Data (K): PID=${pid}, SecretKey=${key}`)
+          break
+        }
+
+        case READY_FOR_QUERY:
+          // 'Z' - Ready for query - connection is complete!
+          this.log('Received ReadyForQuery (Z) - Connection established!')
           return true
-        } else if (msgType === ERROR_RESPONSE) {
-          const error = await this.readBytes(length)
-          throw new Error(`Server error: ${error.toString('utf8')}`)
+
+        case NOTICE_RESPONSE: {
+          await this.readBytes(4)
+          break
         }
-      } else {
-        const authType = this.unpackInt(await this.readBytes(4))
-        if (authType === AUTH_REQ_OK) {
-          this.log('Authentication successful')
-          continue
+
+        case ERROR_RESPONSE: {
+          // 'E' - Error response - read up to 2000 bytes
+          const errorBuf = await this.readBytes(2000)
+          const errorMsg = errorBuf.toString('utf8').replace(/\0/g, '')
+          throw new Error(`Server error: ${errorMsg}`)
         }
+
+        default:
+          // Unknown message type - 8 bytes already discarded above
+          this.log(`Unknown message type '${msgChar}' (0x${msgType.toString(16)})`)
+          break
       }
     }
   }
 
   readBytes(count) {
     return new Promise((resolve, reject) => {
-      const tryRead = () => {
-        const data = this.stream.read(count)
-        if (data) {
-          resolve(data)
-        } else {
-          this.stream.once('readable', tryRead)
+      // Check if we already have enough data in buffer
+      if (this.buffer.length >= count) {
+        const result = this.buffer.slice(0, count)
+        this.buffer = this.buffer.slice(count)
+        resolve(result)
+        return
+      }
+
+      // Need to wait for more data
+      let timeoutId = null
+      let resolved = false
+
+      const checkAndResolve = () => {
+        if (!resolved && this.buffer.length >= count) {
+          resolved = true
+          const result = this.buffer.slice(0, count)
+          this.buffer = this.buffer.slice(count)
+          this.log(`Read ${result.length} bytes: ${result.toString('hex')}`)
+
+          if (timeoutId) clearTimeout(timeoutId)
+          this.stream.removeListener('error', errorHandler)
+          this.stream.removeListener('end', endHandler)
+          this.stream.removeListener('data', tempDataHandler)
+
+          // Re-attach the original data handler
+          this.stream.on('data', this.dataHandler)
+
+          resolve(result)
+          return true
+        }
+        return false
+      }
+
+      // Set up timeout
+      timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true
+          this.stream.removeListener('data', tempDataHandler)
+          this.stream.removeListener('error', errorHandler)
+          this.stream.removeListener('end', endHandler)
+          // Re-attach the original data handler
+          this.stream.on('data', this.dataHandler)
+          reject(new Error(`Timeout reading ${count} bytes. Buffer has ${this.buffer.length} bytes.`))
+        }
+      }, 30000)
+
+      // Add temporary data handler
+      const tempDataHandler = (chunk) => {
+        this.buffer = Buffer.concat([this.buffer, chunk])
+        checkAndResolve()
+      }
+
+      const errorHandler = (err) => {
+        if (!resolved) {
+          resolved = true
+          if (timeoutId) clearTimeout(timeoutId)
+          this.stream.removeListener('data', tempDataHandler)
+          this.stream.removeListener('end', endHandler)
+          // Re-attach the original data handler
+          this.stream.on('data', this.dataHandler)
+          reject(err)
         }
       }
-      tryRead()
+
+      const endHandler = () => {
+        if (!resolved) {
+          resolved = true
+          if (timeoutId) clearTimeout(timeoutId)
+          this.stream.removeListener('data', tempDataHandler)
+          this.stream.removeListener('error', errorHandler)
+          // Re-attach the original data handler
+          this.stream.on('data', this.dataHandler)
+          reject(new Error('Stream ended before reading required bytes'))
+        }
+      }
+
+      // Remove the original data handler temporarily
+      this.stream.removeListener('data', this.dataHandler)
+
+      this.stream.on('data', tempDataHandler)
+      this.stream.once('error', errorHandler)
+      this.stream.once('end', endHandler)
     })
   }
 }
 
 module.exports = NetezzaHandshake
-
-// Made with Bob
