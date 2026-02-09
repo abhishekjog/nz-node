@@ -3,7 +3,7 @@
 const EventEmitter = require('events').EventEmitter
 
 const { parse, serialize } = require('pg-protocol')
-const { getStream, getSecureStream } = require('./stream')
+const { getStream } = require('./stream')
 const NetezzaHandshake = require('./netezza-handshake')
 
 const flushBuffer = serialize.flush()
@@ -28,7 +28,7 @@ class Connection extends EventEmitter {
     this.ssl = config.ssl || false
     this._ending = false
     this._emitMessage = false
-    
+
     // Netezza connection options
     this.database = config.database
     this.user = config.user
@@ -37,7 +37,15 @@ class Connection extends EventEmitter {
     this.pgOptions = config.pgOptions
     this.appName = config.appName
     this.debug = config.debug || false
-    
+
+    // Netezza command number for query protocol
+    this.commandNumber = -1
+
+    // Log SSL configuration
+    if (this.debug) {
+      console.log('[Connection] SSL config:', this.ssl)
+      console.log('[Connection] Security level:', this.securityLevel)
+    }
     const self = this
     this.on('newListener', function (eventName) {
       if (eventName === 'message') {
@@ -57,10 +65,42 @@ class Connection extends EventEmitter {
       if (self._keepAlive) {
         self.stream.setKeepAlive(true, self._keepAliveInitialDelayMillis)
       }
-      
+
       // Always perform Netezza handshake (this is a Netezza driver)
-      self._performNetezzaHandshake()
-        .then(() => {
+      self
+        ._performNetezzaHandshake()
+        .then((result) => {
+          if (self.debug) {
+            console.log('[Connection] Handshake completed, setting up message parser')
+          }
+
+          self.stream = result.stream
+          if (self.debug) {
+            console.log('[Connection] Updated stream reference after handshake')
+          }
+
+          self.commandNumber = 0
+          if (self.debug) {
+            console.log('[Connection] Initialized Netezza command number to 0')
+          }
+
+          // Attach message listeners AFTER handshake completes
+          self.attachListeners(self.stream)
+
+          // Process any remaining buffer data from handshake
+          if (result.remainingBuffer && result.remainingBuffer.length > 0) {
+            if (self.debug) {
+              console.log('[Connection] Processing remaining buffer:', result.remainingBuffer.length, 'bytes')
+            }
+            self.stream.emit('data', result.remainingBuffer)
+          }
+
+          if (self.debug) {
+            console.log('[Connection] Emitting readyForQuery event after handshake')
+          }
+          self.emit('readyForQuery')
+
+          // Emit connect event - client will be marked as connected and can start sending queries
           self.emit('connect')
         })
         .catch((err) => {
@@ -78,76 +118,49 @@ class Connection extends EventEmitter {
     this.stream.on('error', reportStreamError)
 
     this.stream.on('close', function () {
+      if (self.debug) {
+        console.log('[Connection] Stream closed')
+      }
       self.emit('end')
-    })
-
-    if (!this.ssl) {
-      return this.attachListeners(this.stream)
-    }
-
-    this.stream.once('data', function (buffer) {
-      const responseCode = buffer.toString('utf8')
-      switch (responseCode) {
-        case 'S': // Server supports SSL connections, continue with a secure connection
-          break
-        case 'N': // Server does not support SSL connections
-          self.stream.end()
-          return self.emit('error', new Error('The server does not support SSL connections'))
-        default:
-          // Any other response byte, including 'E' (ErrorResponse) indicating a server error
-          self.stream.end()
-          return self.emit('error', new Error('There was an error establishing an SSL connection'))
-      }
-      const options = {
-        socket: self.stream,
-      }
-
-      if (self.ssl !== true) {
-        Object.assign(options, self.ssl)
-
-        if ('key' in self.ssl) {
-          options.key = self.ssl.key
-        }
-      }
-
-      const net = require('net')
-      if (net.isIP && net.isIP(host) === 0) {
-        options.servername = host
-      }
-      try {
-        self.stream = getSecureStream(options)
-      } catch (err) {
-        return self.emit('error', err)
-      }
-      self.attachListeners(self.stream)
-      self.stream.on('error', reportStreamError)
-
-      self.emit('sslconnect')
     })
   }
 
   async _performNetezzaHandshake() {
+    if (this.debug) {
+      console.log('[Connection] Initiating Netezza handshake protocol')
+    }
+
     const handshake = new NetezzaHandshake(this.stream, this.ssl, {
       appName: this.appName,
-      debug: this.debug
+      debug: this.debug,
     })
 
     try {
-      await handshake.startup(
+      const result = await handshake.startup(
         this.database,
         this.securityLevel,
         this.user,
         this.password,
         this.pgOptions
       )
-      return true
+      if (this.debug) {
+        console.log('[Connection] Netezza handshake completed')
+      }
+      return result
     } catch (error) {
+      if (this.debug) {
+        console.error('[Connection] Netezza handshake failed:', error.message)
+      }
       throw new Error(`Netezza handshake failed: ${error.message}`)
     }
   }
 
   attachListeners(stream) {
+    const self = this
     parse(stream, (msg) => {
+      if (self.debug) {
+        console.log('[Connection] Received message:', msg.name, msg.length ? `(${msg.length} bytes)` : '')
+      }
       const eventName = msg.name === 'error' ? 'errorMessage' : msg.name
       if (this._emitMessage) {
         this.emit('message', msg)
@@ -182,13 +195,47 @@ class Connection extends EventEmitter {
 
   _send(buffer) {
     if (!this.stream.writable) {
+      if (this.debug) {
+        console.log('[Connection] Stream not writable, cannot send')
+      }
       return false
+    }
+    if (this.debug) {
+      console.log(`[Connection] Sending ${buffer.length} bytes to server`)
     }
     return this.stream.write(buffer)
   }
 
   query(text) {
-    this._send(serialize.query(text))
+    if (this.debug) {
+      console.log(`[Connection] Sending Netezza query: ${text}`)
+    }
+
+    // Format: 'P' + 3 zero bytes + 1-byte command number + query string + null byte
+    if (this.commandNumber !== -1) {
+      this.commandNumber++
+      if (this.commandNumber > 100000) {
+        this.commandNumber = 1
+      }
+
+      // Build Netezza query message
+      const queryBuffer = Buffer.from(text, 'utf8')
+      const nullByte = Buffer.from([0])
+
+      const header = Buffer.from([0x50, 0x00, 0x00, 0x00, this.commandNumber & 0xff])
+
+      const message = Buffer.concat([header, queryBuffer, nullByte])
+
+      if (this.debug) {
+        console.log(
+          `[Connection] Netezza query format: type=P, commandNumber=${this.commandNumber}, length=${message.length}`
+        )
+      }
+
+      this._send(message)
+    } else {
+      this._send(serialize.query(text))
+    }
   }
 
   // send parse message
