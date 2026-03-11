@@ -648,10 +648,10 @@ async function main() {
 
   try {
     // Run transaction tests by default
-    //await transactionExample()
+    await transactionExample()
 
     // Uncomment to run other examples
-    await ddlExample()
+    //await ddlExample()
     // await basicExample()
     // await secureConnectionExample()
     // await poolExample()
