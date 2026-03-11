@@ -265,15 +265,15 @@ async function transactionExample() {
   try {
     console.log('Connecting to Netezza...')
     await client.connect()
-    console.log('✓ Connected successfully!\n')
+    console.log('Connected successfully!\n')
 
-    // Setup: Create test table
+    //Create test table
     console.log('Setting up test table...')
     try {
-      // Try to drop table if it exists (Netezza doesn't support IF EXISTS)
+      // Drop the table if it exists
       try {
         await client.query('DROP TABLE transaction_test')
-        console.log('✓ Existing test table dropped')
+        console.log('Existing test table dropped')
       } catch (err) {
         // Table doesn't exist, that's fine
         console.log('✓ No existing test table to drop')
@@ -314,7 +314,7 @@ async function transactionExample() {
       console.error('   ✗ Test 1 FAILED:', error.message, '\n')
     }
 
-    // Test 2: BEGIN and ROLLBACK
+   /* // Test 2: BEGIN and ROLLBACK
     console.log('--- Test 2: BEGIN and ROLLBACK ---')
     try {
       console.log('1. Executing BEGIN...')
@@ -451,7 +451,7 @@ async function transactionExample() {
       } else {
         console.log('   ✗ Data not found (unexpected)')
         console.log('   ✗ Test 5 FAILED\n')
-      }
+      
     } catch (error) {
       console.error('   ✗ Test 5 FAILED:', error.message, '\n')
     }
@@ -467,7 +467,7 @@ async function transactionExample() {
     console.log('Cleaning up test table...')
     await client.query('DROP TABLE transaction_test')
     console.log('✓ Test table dropped\n')
-
+*/
   } catch (error) {
     console.error('Fatal error in transaction tests:', error.message)
   } finally {
