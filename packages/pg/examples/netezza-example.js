@@ -488,45 +488,94 @@ async function transactionExample() {
       console.error('   ✗ Test 5 FAILED:', error.message, '\n')
     }
 
-     // Test 6: Error handling with automatic ROLLBACK
-     console.log('--- Test 6: Error Handling with ROLLBACK ---')
-     try {
-       console.log('1. Executing BEGIN...')
-       await client.query('BEGIN')
-       console.log('   ✓ BEGIN executed successfully')
- 
-       console.log('2. Inserting valid data...')
-       await client.query(
-         "INSERT INTO transaction_test VALUES (12, 'L', 'error_test')"
-       )
-       console.log('   ✓  INSERT executed')
- 
-       console.log('3. Attempting invalid operation (intentional error)...')
-       try {
-         await client.query('INSERT INTO non_existent_table VALUES (1)')
-       } catch (err) {
-         console.log('   ✓ Error caught as expected:', err.message)
-       }
- 
-       console.log('4. Executing ROLLBACK due to error...')
-       await client.query('ROLLBACK')
-       console.log('   ✓ ROLLBACK executed successfully')
- 
-       console.log('5. Verifying all transaction data was rolled back...')
-       const verifyResult = await client.query(
-         "SELECT * FROM transaction_test WHERE test_type = 'error_test'"
-       )
-       if (verifyResult.rows.length === 0) {
-         console.log('   ✓ No data found after ROLLBACK (expected)')
-         console.log('   ✓ Test 6 PASSED: Error handling with ROLLBACK works correctly\n')
-       } else {
-         console.log('   ✗ Data found after ROLLBACK (unexpected):', verifyResult.rows)
-         console.log('   ✗ Test 6 FAILED\n')
-       }
-     } catch (error) {
-       console.error('   ✗ Test 6 FAILED:', error.message, '\n')
-     }
-    
+    // Test 6: Error handling with automatic ROLLBACK
+    console.log('--- Test 6: Error Handling with ROLLBACK ---')
+    try {
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log('   ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting valid data...')
+      await client.query(
+        "INSERT INTO transaction_test VALUES (12, 'L', 'error_test')"
+      )
+      console.log('   ✓  INSERT executed')
+
+      console.log('3. Attempting invalid operation (intentional error)...')
+      try {
+        await client.query('INSERT INTO non_existent_table VALUES (1)')
+      } catch (err) {
+        console.log('   ✓ Error caught as expected:', err.message)
+      }
+
+      console.log('4. Executing ROLLBACK due to error...')
+      await client.query('ROLLBACK')
+      console.log('   ✓ ROLLBACK executed successfully')
+
+      console.log('5. Verifying all transaction data was rolled back...')
+      const verifyResult = await client.query(
+        "SELECT * FROM transaction_test WHERE test_type = 'error_test'"
+      )
+      if (verifyResult.rows.length === 0) {
+        console.log('   ✓ No data found after ROLLBACK (expected)')
+        console.log('   ✓ Test 6 PASSED: Error handling with ROLLBACK works correctly\n')
+      } else {
+        console.log('   ✗ Data found after ROLLBACK (unexpected):', verifyResult.rows)
+        console.log('   ✗ Test 6 FAILED\n')
+      }
+    } catch (error) {
+      console.error('   ✗ Test 6 FAILED:', error.message, '\n')
+    }
+
+    //Test 7:Two COMMITS
+    console.log("---TEST7: Two COMMITS")
+    try {
+
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log('   ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting valid data...')
+      await client.query(
+        "INSERT INTO transaction_test VALUES (13, 'M', 'two_commits')"
+      )
+      console.log('   ✓  INSERT executed')
+
+      console.log('4. Executing COMMIT...')
+      await client.query('COMMIT')
+      console.log('   first COMMIT executed successfully')
+
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log('   ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting valid data...')
+      await client.query(
+        "INSERT INTO transaction_test VALUES (14, 'N', 'two_commits')"
+      )
+      console.log('   ✓  INSERT executed')
+
+      console.log('4. Executing COMMIT...')
+      await client.query('COMMIT')
+      console.log('   second  COMMIT executed successfully')
+
+
+      const verifyResult = await client.query(
+        "SELECT * FROM transaction_test WHERE test_type = 'two_commits'")
+
+      if (verifyResult.rows.length === 2) {
+        console.log('   ✓ Both commits successfully executed')
+        console.log('   ✓ Test 7 PASSED')
+      } else {
+
+        console.log('   ✗ Test 7 FAILED\n')
+      }
+    } catch (error) {
+      console.error('   ✗ Test 7 FAILED:', error.message, '\n')
+    }
+
+
+
   } catch (error) {
     console.error('Fatal error in transaction tests:', error.message)
   } finally {
@@ -534,6 +583,13 @@ async function transactionExample() {
     console.log('✓ Connection closed')
   }
 }
+
+
+
+
+
+
+
 
 async function ddlExample() {
   console.log('\n=== Comprehensive DDL Tests ===\n')
