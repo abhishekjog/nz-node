@@ -1,23 +1,28 @@
 {
   "name": "netezza-node-driver",
-  "version": "1.0.0",
-  "description": "PostgreSQL client - pure javascript & libpq with the same API",
+  "version": "1.0.1",
+  "description": "Node.js driver for IBM Netezza databases with full protocol support",
   "keywords": [
+    "netezza",
+    "nps",
+    "ibm",
     "database",
-    "libpq",
-    "pg",
-    "postgre",
-    "postgres",
-    "postgresql",
+    "driver",
+    "client",
+    "sql",
     "rdbms"
   ],
-  "homepage": "https://github.com/brianc/node-postgres",
+  "homepage": "https://github.com/abhishekjog/nz-node",
   "repository": {
     "type": "git",
-    "url": "git://github.com/brianc/node-postgres.git",
+    "url": "git://github.com/abhishekjog/nz-node.git",
     "directory": "packages/pg"
   },
-  "author": "Brian Carlson <brian.m.carlson@gmail.com>",
+  "author": "Brighty Jobin <Brighty.Jobin@ibm.com>",
+  "contributors": [
+    "Netezza Team",
+    "Brian Carlson <brian.m.carlson@gmail.com> (Original PostgreSQL driver)"
+  ],
   "main": "./lib",
   "exports": {
     ".": {
@@ -66,7 +71,7 @@
   "files": [
     "lib",
     "esm",
-    "SPONSORS.md"
+    "README.md"
   ],
   "license": "MIT",
   "engines": {
