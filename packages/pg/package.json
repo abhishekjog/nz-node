@@ -18,10 +18,11 @@
     "url": "git://github.com/abhishekjog/nz-node.git",
     "directory": "packages/pg"
   },
-  "author": "Brighty Jobin <Brighty.Jobin@ibm.com>",
+  "author": "Abhishek Jog",
   "contributors": [
-    "Netezza Team",
-    "Brian Carlson <brian.m.carlson@gmail.com> (Original PostgreSQL driver)"
+    "Sagar Soni",
+    "Abhishek Sathish",
+    "Brighty Jobin"
   ],
   "main": "./lib",
   "exports": {
