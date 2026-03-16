@@ -1,6 +1,6 @@
 {
-  "name": "pg",
-  "version": "8.16.3",
+  "name": "netezza-node-driver",
+  "version": "1.0.0",
   "description": "PostgreSQL client - pure javascript & libpq with the same API",
   "keywords": [
     "database",
