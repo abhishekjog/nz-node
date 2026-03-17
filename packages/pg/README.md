@@ -1,6 +1,6 @@
 # Netezza Node.js Driver
 
-A Node.js driver for IBM Netezza databases
+A Node.js driver for IBM Netezza databases,implementing IBM's proprietary Netezza protocol.
 
 ## Overview
 
@@ -100,12 +100,7 @@ await pool.end()
 | `user` | string | - | Username |
 | `password` | string | - | Password |
 | `securityLevel` | number | 0 | SSL/TLS security level (0-3) |
-| `pgOptions` | string | - | PostgreSQL options string |
-| `appName` | string | script name | Application name for audit logs |
-| `debug` | boolean | false | Enable debug logging |
-| `connectionTimeoutMillis` | number | 0 | Connection timeout in milliseconds |
-| `keepAlive` | boolean | false | Enable TCP keep-alive |
-| `keepAliveInitialDelayMillis` | number | 0 | Initial delay for keep-alive |
+
 
 ### Security Levels
 
@@ -395,14 +390,6 @@ client.on('error', (err) => {
 - **Netezza**: Compatible with Netezza Performance Server (NPS) versions supporting CP_VERSION_2-6
 - **PostgreSQL**: **NOT COMPATIBLE** - This is a Netezza-only driver
 
-## Implementation Details
-
-Based on the Python [nzpy](https://github.com/IBM/nzpy) library protocol implementation.
-
-Key components:
-- `lib/netezza-handshake.js` - Handshake protocol implementation
-- `lib/connection.js` - Connection management
-- `lib/client.js` - Client API
 
 ## License
 
@@ -424,6 +411,5 @@ For issues and questions:
 
 ## References
 
-- [nzpy GitHub Repository](https://github.com/IBM/nzpy)
 - [IBM Netezza Performance Server](https://www.ibm.com/products/netezza)
 - [Netezza SQL Reference](https://www.ibm.com/docs/en/netezza)
