@@ -73,7 +73,7 @@ console.log(result.rows)
 const client = await pool.connect()
 try {
   await client.query('BEGIN')
-  // Note: Netezza has limited support for parameterized queries
+  
   const res = await client.query("INSERT INTO users(id, name) VALUES(1, 'John')")
   await client.query('COMMIT')
 } catch (e) {
