@@ -1,6 +1,6 @@
 # Netezza Node.js Driver
 
-A Node.js driver for IBM Netezza databases, based on the [nzpy](https://github.com/IBM/nzpy) protocol implementation.
+A Node.js driver for IBM Netezza databases
 
 ## Overview
 
