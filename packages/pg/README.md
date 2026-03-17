@@ -62,18 +62,19 @@ const pool = new Pool({
   password: 'mypassword',
   max: 20,  // Maximum pool size
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000,  // 10 seconds recommended for Netezza
 })
 
 // Query directly from pool
-const result = await pool.query('SELECT NOW()')
+const result = await pool.query('SELECT CURRENT_TIMESTAMP')
 console.log(result.rows)
 
-// Or get a client from pool
+// Or get a client from pool for transactions
 const client = await pool.connect()
 try {
   await client.query('BEGIN')
-  const res = await client.query('INSERT INTO users(name) VALUES($1)', ['John'])
+  // Note: Netezza has limited support for parameterized queries
+  const res = await client.query("INSERT INTO users(id, name) VALUES(1, 'John')")
   await client.query('COMMIT')
 } catch (e) {
   await client.query('ROLLBACK')
@@ -84,6 +85,8 @@ try {
 
 await pool.end()
 ```
+
+
 
 ## Configuration Options
 
