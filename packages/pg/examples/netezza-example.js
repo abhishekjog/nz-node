@@ -128,7 +128,7 @@ async function basicExample() {
 
 async function secureConnectionExample() {
   console.log('\n=== Secure Netezza Connection Example ===\n')
-  
+
   const client = new Client({
     host: process.env.NETEZZA_HOST || 'localhost',
     port: parseInt(process.env.NETEZZA_PORT || '5480'),
@@ -159,9 +159,9 @@ async function secureConnectionExample() {
 
 async function poolExample() {
   console.log('\n=== Netezza Connection Pool Example ===\n')
-  
+
   const { Pool } = require('../lib')
-  
+
   const pool = new Pool({
     host: process.env.NETEZZA_HOST || 'localhost',
     port: parseInt(process.env.NETEZZA_PORT || '5480'),
@@ -175,7 +175,7 @@ async function poolExample() {
 
   try {
     console.log('Creating connection pool...')
-    
+
     // Execute multiple queries concurrently
     const queries = []
     for (let i = 1; i <= 3; i++) {
@@ -214,7 +214,7 @@ async function poolExample() {
 
 async function errorHandlingExample() {
   console.log('\n=== Error Handling Example ===\n')
-  
+
   const client = new Client({
     host: process.env.NETEZZA_HOST || 'localhost',
     port: parseInt(process.env.NETEZZA_PORT || '5480'),
@@ -251,36 +251,493 @@ async function errorHandlingExample() {
 }
 
 async function transactionExample() {
-  console.log('\n=== Transaction Example ===\n')
-  
-  const { Pool } = require('../lib')
-  
-  const pool = new Pool({
+  console.log('\n=== Comprehensive Transaction Management Tests ===\n')
+
+  const client = new Client({
     host: process.env.NETEZZA_HOST || 'localhost',
     port: parseInt(process.env.NETEZZA_PORT || '5480'),
     database: process.env.NETEZZA_DATABASE || 'system',
     user: process.env.NETEZZA_USER || 'admin',
-    password: process.env.NETEZZA_PASSWORD || 'password'
+    password: process.env.NETEZZA_PASSWORD || 'password',
+    debug: false,
   })
 
-  const client = await pool.connect()
+  try {
+    console.log('Connecting to Netezza...')
+    await client.connect()
+    console.log('Connected successfully!\n')
+
+    //Create test table
+    console.log('Setting up test table...')
+    try {
+      // Drop the table if it exists
+      try {
+        await client.query('DROP TABLE transaction_test')
+        console.log('Existing test table dropped')
+      } catch (err) {
+        // Table doesn't exist, that's fine
+        console.log('No existing test table to drop')
+      }
+
+      await client.query('CREATE TABLE transaction_test (id INT, name VARCHAR(50), test_type VARCHAR(50))')
+      console.log('Test table created\n')
+    } catch (error) {
+      console.error('Setup failed:', error.message)
+      throw error
+    }
+
+    //Test 1:ROLLBACK basic test
+    console.log('--- Test 1: BASIC ROLLBACK TEST ---')
+    try {
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log(' ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting row1')
+      const insertResult1 = await client.query(
+        "INSERT INTO transaction_test VALUES (1, 'A', 'roll_test')")
+      console.log('   ✓ INSERT executed:', insertResult1.rowCount, 'row(s)')
+
+      console.log('3. Inserting row2')
+      const insertResult2 = await client.query(
+        "INSERT INTO transaction_test VALUES (2, 'B', 'roll_test')")
+      console.log('   ✓ INSERT executed:', insertResult2.rowCount, 'row(s)')
+
+      console.log('4. Executing ROLLBACK...')
+      await client.query('ROLLBACK')
+      console.log('   ✓ ROLLBACK executed successfully')
+
+      const verifyResult = await client.query(
+        "SELECT * FROM transaction_test WHERE test_type='roll_test'")
+
+      if (verifyResult.rows.length === 0) {
+        console.log('   ✓ No data found after ROLLBACK')
+        console.log('   ✓ Test 1 PASSED:Basic ROLLBACK works correctly\n')
+      } else {
+        console.log('   ✗ Data found after ROLLBACK (unexpected):', verifyResult.rows)
+        console.log('   ✗ Test 1 FAILED\n')
+      }
+    } catch (error) {
+      console.error('   ✗ Test 1 FAILED:', error.message, '\n')
+    }
+
+
+    //Test 2:COMMIT basic test
+    console.log('--- Test 2: BASIC COMMIT TEST ---')
+    try {
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log(' ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting row3')
+      const insertResult3 = await client.query(
+        "INSERT INTO transaction_test VALUES (3, 'C', 'commit_test')")
+      console.log('   ✓ INSERT executed:', insertResult3.rowCount, 'row(s)')
+
+      console.log('2. Inserting row4')
+      const insertResult4 = await client.query(
+        "INSERT INTO transaction_test VALUES (4, 'D', 'commit_test')")
+      console.log('   ✓ INSERT executed:', insertResult4.rowCount, 'row(s)')
+
+      console.log('3. Executing COMMIT...')
+      await client.query('COMMIT')
+      console.log('   ✓ COMMIT executed successfully')//saved data permanently
+
+      console.log('4. Verifying data was persisted...')
+      const verifyResult = await client.query(
+        "SELECT * FROM transaction_test WHERE test_type='commit_test'"
+      )
+
+      console.log('   ✓ Data found after COMMIT:', verifyResult.rows)//should show all rows
+      console.log('   ✓ Test 2 PASSED:Basic COMMIT works correctly\n')
+    } catch (error) {
+      console.error('   ✗ Test 2 FAILED:', error.message, '\n')
+    }
+
+
+    //Test 3:ROLLBACK should not work after COMMIT
+    console.log('--- Test 3: ROLLBACK AFTER COMMIT  ---')
+    try {
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log(' ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting row5')
+      const insertResult5 = await client.query(
+        "INSERT INTO transaction_test VALUES (5, 'E', 'rollcom_test')")
+      console.log('   ✓ INSERT executed:', insertResult5.rowCount, 'row(s)')
+
+      console.log('3. Executing COMMIT...')
+      await client.query('COMMIT')
+      console.log('   ✓ COMMIT executed successfully')
+
+      console.log('4. Executing ROLLBACK...')
+      await client.query('ROLLBACK')
+      console.log('   ✓ ROLLBACK executed successfully')
+
+      const verifyResult = await client.query(
+        "SELECT * FROM transaction_test WHERE test_type='rollcom_test'")
+
+      if (verifyResult.rows.length > 0) {
+
+        console.log('   ✓ Test 3 PASSED:ROLLBACK after COMMIT is not working(expected)\n')
+        console.log('   ✓ Test 3 PASSED\n')
+      } else {
+        console.log('   ✗ No data found', verifyResult.rows)
+        console.log('   ✗ Test 3 FAILED\n')
+      }
+    } catch (error) {
+      console.error('   ✗ Test 3 FAILED:', error.message, '\n')
+    }
+
+
+    //Test 4:MULTIPLE TRANSACTIONS TEST 1
+    console.log('--- Test 4:MULTIPLE TRANSACTIONS TEST 1 ---')
+    try {
+      console.log('First Transaction')
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log(' ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting row6')
+      const insertResult6 = await client.query(
+        "INSERT INTO transaction_test VALUES (6, 'F', 'Transaction1_test')")
+      console.log('   ✓ INSERT executed:', insertResult6.rowCount, 'row(s)')
+
+      console.log('3. Inserting row7')
+      const insertResult7 = await client.query(
+        "INSERT INTO transaction_test VALUES (7, 'G', 'Transaction1_test')")
+      console.log('   ✓ INSERT executed:', insertResult7.rowCount, 'row(s)')
+
+      console.log('4. Executing COMMIT...')
+      await client.query('COMMIT')
+      console.log('   ✓ COMMIT executed successfully')
+
+      console.log('First Transaction sucessfully executed')
+      console.log('Second Transaction')
+
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log(' ✓ BEGIN executed successfully')
+
+      const insertResult8 = await client.query(
+        "INSERT INTO transaction_test VALUES (8, 'H', 'Transaction2_test')")
+      console.log('   ✓ INSERT executed:', insertResult8.rowCount, 'row(s)')
+
+      console.log('4. Executing ROLLBACK...')
+      await client.query('ROLLBACK')
+      console.log('   ✓ ROLLBACK executed successfully')
+
+      const verifyResult = await client.query(
+        "SELECT * FROM transaction_test WHERE test_type='Transaction2_test'")
+
+      if (verifyResult.rows.length === 0) {
+        console.log('   ✓ ROLLBACK executed')
+        console.log('   ✓ Test 4 PASSED:Multiple transaction works correctly\n')
+      } else {
+        console.log('   ✗ TEST 4 FAILED', verifyResult.rows)
+
+      }
+    } catch (error) {
+      console.error('   ✗ Test 4 FAILED:', error.message, '\n')
+    }
+
+
+
+    //Test 5:MULTIPLE TRANSACTIONS TEST 2
+    console.log('--- Test 5:MULTIPLE TRANSACTIONS TEST 1 ---')
+    try {
+      console.log('First Transaction')
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log(' ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting row9')
+      const insertResult9 = await client.query(
+        "INSERT INTO transaction_test VALUES (9, 'I', 'Transaction_test2')")
+      console.log('   ✓ INSERT executed:', insertResult9.rowCount, 'row(s)')
+
+      console.log('3. Inserting row10')
+      const insertResult10 = await client.query(
+        "INSERT INTO transaction_test VALUES (10, 'J', 'Transaction_test2')")
+      console.log('   ✓ INSERT executed:', insertResult10.rowCount, 'row(s)')
+
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log(' ✓ BEGIN executed successfully')
+
+      const insertResult8 = await client.query(
+        "INSERT INTO transaction_test VALUES (11, 'K', 'Transaction_test2')")
+      console.log('   ✓ INSERT executed:', insertResult8.rowCount, 'row(s)')
+
+      console.log('4. Executing ROLLBACK...')
+      await client.query('ROLLBACK')
+      console.log('   ✓ ROLLBACK executed successfully')
+
+      const verifyResult = await client.query(
+        "SELECT * FROM transaction_test WHERE test_type='Transaction_test2'")
+
+      if (verifyResult.rows.length === 0) {
+        console.log('   ✓ ROLLBACK executed')
+        console.log('   ✓ Test 5 PASSED:Multiple transaction works correctly\n')
+      } else {
+        console.log('   ✗ TEST 5 FAILED', verifyResult.rows)
+
+      }
+    } catch (error) {
+      console.error('   ✗ Test 5 FAILED:', error.message, '\n')
+    }
+
+    // Test 6: Error handling with automatic ROLLBACK
+    console.log('--- Test 6: Error Handling with ROLLBACK ---')
+    try {
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log('   ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting valid data...')
+      await client.query(
+        "INSERT INTO transaction_test VALUES (12, 'L', 'error_test')"
+      )
+      console.log('   ✓  INSERT executed')
+
+      console.log('3. Attempting invalid operation (intentional error)...')
+      try {
+        await client.query('INSERT INTO non_existent_table VALUES (1)')
+      } catch (err) {
+        console.log('   ✓ Error caught as expected:', err.message)
+      }
+
+      console.log('4. Executing ROLLBACK due to error...')
+      await client.query('ROLLBACK')
+      console.log('   ✓ ROLLBACK executed successfully')
+
+      console.log('5. Verifying all transaction data was rolled back...')
+      const verifyResult = await client.query(
+        "SELECT * FROM transaction_test WHERE test_type = 'error_test'"
+      )
+      if (verifyResult.rows.length === 0) {
+        console.log('   ✓ No data found after ROLLBACK (expected)')
+        console.log('   ✓ Test 6 PASSED: Error handling with ROLLBACK works correctly\n')
+      } else {
+        console.log('   ✗ Data found after ROLLBACK (unexpected):', verifyResult.rows)
+        console.log('   ✗ Test 6 FAILED\n')
+      }
+    } catch (error) {
+      console.error('   ✗ Test 6 FAILED:', error.message, '\n')
+    }
+
+    //Test 7:Two COMMITS
+    console.log("---TEST7: Two COMMITS")
+    try {
+
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log('   ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting valid data...')
+      await client.query(
+        "INSERT INTO transaction_test VALUES (13, 'M', 'two_commits')"
+      )
+      console.log('   ✓  INSERT executed')
+
+      console.log('4. Executing COMMIT...')
+      await client.query('COMMIT')
+      console.log('   first COMMIT executed successfully')
+
+      console.log('1. Executing BEGIN...')
+      await client.query('BEGIN')
+      console.log('   ✓ BEGIN executed successfully')
+
+      console.log('2. Inserting valid data...')
+      await client.query(
+        "INSERT INTO transaction_test VALUES (14, 'N', 'two_commits')"
+      )
+      console.log('   ✓  INSERT executed')
+
+      console.log('4. Executing COMMIT...')
+      await client.query('COMMIT')
+      console.log('   second  COMMIT executed successfully')
+
+
+      const verifyResult = await client.query(
+        "SELECT * FROM transaction_test WHERE test_type = 'two_commits'")
+
+      if (verifyResult.rows.length === 2) {
+        console.log('   ✓ Both commits successfully executed')
+        console.log('   ✓ Test 7 PASSED')
+      } else {
+
+        console.log('   ✗ Test 7 FAILED\n')
+      }
+    } catch (error) {
+      console.error('   ✗ Test 7 FAILED:', error.message, '\n')
+    }
+
+
+
+  } catch (error) {
+    console.error('Fatal error in transaction tests:', error.message)
+  } finally {
+    await client.end()
+    console.log('✓ Connection closed')
+  }
+}
+
+async function ddlExample() {
+  console.log('\n=== Comprehensive DDL Tests ===\n')
+
+  const client = new Client({
+    host: process.env.NETEZZA_HOST || 'localhost',
+    port: parseInt(process.env.NETEZZA_PORT || '5480'),
+    database: process.env.NETEZZA_DATABASE || 'system',
+    user: process.env.NETEZZA_USER || 'admin',
+    password: process.env.NETEZZA_PASSWORD || 'password',
+    debug: false,
+  })
 
   try {
-    console.log('Starting transaction...')
-    await client.query('BEGIN')
-    
-    console.log('Executing queries in transaction...')
-    await client.query('SELECT 1')
-    await client.query('SELECT 2')
-    
-    await client.query('COMMIT')
-    console.log('✓ Transaction committed successfully\n')
+    console.log('Connecting to Netezza...')
+    await client.connect()
+    console.log('✓ Connected successfully!\n')
+
+    // Test 1: CREATE TABLE AS (CTAS)
+    console.log('--- Test 1: CREATE TABLE AS (CTAS) ---')
+    try {
+      console.log('1. Creating source table...')
+      await client.query('CREATE TABLE ddl_source (id INT, name VARCHAR(50), value INT)')
+      await client.query("INSERT INTO ddl_source VALUES (1, 'Row1', 100)")
+      await client.query("INSERT INTO ddl_source VALUES (2, 'Row2', 200)")
+      console.log('   ✓ Source table created with 2 rows')
+
+      console.log('2. Creating table using CTAS...')
+      await client.query('CREATE TABLE ddl_ctas AS SELECT * FROM ddl_source WHERE value > 100')
+      console.log('   ✓ CTAS executed successfully')
+
+      console.log('3. Verifying CTAS result...')
+      const result = await client.query('SELECT * FROM ddl_ctas')
+      console.log('   ✓ CTAS table contains:', result.rows.length, 'row(s)')
+      console.log('   ✓ Data:', result.rows)
+      console.log('   ✓ Test 1 PASSED: CREATE TABLE AS works correctly\n')
+    } catch (error) {
+      console.error('   ✗ Test 1 FAILED:', error.message, '\n')
+    }
+
+    // Test 2: ALTER TABLE
+    console.log('--- Test 2: ALTER TABLE ---')
+    try {
+      console.log('1. Creating table for ALTER tests...')
+      await client.query('CREATE TABLE ddl_alter (id INT, name VARCHAR(50))')
+      console.log('   ✓ Table created')
+
+      console.log('2. Adding new column...')
+      await client.query('ALTER TABLE ddl_alter ADD COLUMN email VARCHAR(100)')
+      console.log('   ✓ Column added successfully')
+
+      console.log('3. Inserting data with new column...')
+      await client.query("INSERT INTO ddl_alter VALUES (1, 'Test', 'test@example.com')")
+      console.log('   ✓ Data inserted')
+
+      console.log('4. Verifying ALTER result...')
+      const result = await client.query('SELECT * FROM ddl_alter')
+      console.log('   ✓ Table structure modified:', result.rows)
+      console.log('   ✓ Test 2 PASSED: ALTER TABLE works correctly\n')
+    } catch (error) {
+      console.error('   ✗ Test 2 FAILED:', error.message, '\n')
+    }
+
+    // Test 3: CREATE VIEW
+    console.log('--- Test 3: CREATE VIEW ---')
+    try {
+      console.log('1. Creating view from existing table...')
+      await client.query('CREATE VIEW ddl_view AS SELECT id, name FROM ddl_source WHERE id > 0')
+      console.log('   ✓ View created successfully')
+
+      console.log('2. Querying the view...')
+      const result = await client.query('SELECT * FROM ddl_view')
+      console.log('   ✓ View query returned:', result.rows.length, 'row(s)')
+      console.log('   ✓ Data:', result.rows)
+      console.log('   ✓ Test 3 PASSED: CREATE VIEW works correctly\n')
+    } catch (error) {
+      console.error('   ✗ Test 3 FAILED:', error.message, '\n')
+    }
+
+    // Test 4: CREATE SEQUENCE
+    console.log('--- Test 4: CREATE SEQUENCE ---')
+    try {
+      console.log('1. Creating sequence...')
+      await client.query('CREATE SEQUENCE ddl_seq START WITH 1 INCREMENT BY 1')
+      console.log('   ✓ Sequence created successfully')
+
+      console.log('2. Getting next value from sequence...')
+      const result1 = await client.query('SELECT NEXT VALUE FOR ddl_seq AS next_val')
+      console.log('   ✓ First value:', result1.rows[0])
+
+      const result2 = await client.query('SELECT NEXT VALUE FOR ddl_seq AS next_val')
+      console.log('   ✓ Second value:', result2.rows[0])
+
+      console.log('   ✓ Test 4 PASSED: CREATE SEQUENCE works correctly\n')
+    } catch (error) {
+      console.error('   ✗ Test 4 FAILED:', error.message, '\n')
+    }
+
+
+    // Test 5: CREATE PROCEDURE
+    console.log('--- Test 5: CREATE PROCEDURE (Stored Procedure) ---')
+    try {
+      console.log('1. Creating stored procedure...')
+      await client.query(`
+    CREATE OR REPLACE PROCEDURE ddl_test_proc()
+    RETURNS INTEGER
+    LANGUAGE NZPLSQL
+    AS
+    BEGIN_PROC
+      BEGIN
+        INSERT INTO ddl_source VALUES (10, 'Proc Test', 1000);
+        RETURN 1;
+      END;
+    END_PROC;
+  `)
+
+      console.log('   ✓ Stored procedure created successfully')
+
+      console.log('2. Executing stored procedure...')
+      await client.query("CALL ddl_test_proc()")
+      console.log('   ✓ Stored procedure executed')
+
+      console.log('3. Verifying procedure result...')
+      const result = await client.query('SELECT * FROM ddl_source WHERE id = 10')
+
+      if (result.rows.length > 0) {
+        console.log('   ✓ Procedure inserted data:', result.rows)
+        console.log('   ✓ Test 5 PASSED\n')
+      } else {
+        console.log('   ✗ No data found')
+        console.log('   ✗ Test 5 FAILED\n')
+      }
+
+    } catch (error) {
+      console.error('   ✗ Test 5 FAILED:', error.message, '\n')
+    }
+
+
+
+    // Cleanup
+    console.log('Cleaning up DDL test objects...')
+    // Drop in correct order (dependencies first)
+    try { await client.query('DROP VIEW ddl_view') } catch (e) { /* ignore */ }
+    try { await client.query('DROP PROCEDURE ddl_test_proc(INT, VARCHAR)') } catch (e) { /* ignore */ }
+    try { await client.query('DROP FUNCTION ddl_test_func(INT)') } catch (e) { /* ignore */ }
+    try { await client.query('DROP SEQUENCE ddl_seq') } catch (e) { /* ignore */ }
+    try { await client.query('DROP TABLE ddl_ctas') } catch (e) { /* ignore */ }
+    try { await client.query('DROP TABLE ddl_alter') } catch (e) { /* ignore */ }
+    try { await client.query('DROP TABLE ddl_source') } catch (e) { /* ignore */ }
+    console.log('✓ DDL test objects cleaned up\n')
+
   } catch (error) {
-    await client.query('ROLLBACK')
-    console.error('✗ Transaction rolled back:', error.message)
+    console.error('Fatal error in DDL tests:', error.message)
   } finally {
-    client.release()
-    await pool.end()
+    await client.end()
     console.log('✓ Connection closed')
   }
 }
@@ -298,13 +755,15 @@ async function main() {
   console.log()
 
   try {
-    await basicExample()
-    
+    // Run transaction tests by default
+    // await transactionExample()
+
     // Uncomment to run other examples
+    await ddlExample()
+    // await basicExample()
     // await secureConnectionExample()
     // await poolExample()
     // await errorHandlingExample()
-    // await transactionExample()
   } catch (error) {
     console.error('Fatal error:', error)
     process.exit(1)

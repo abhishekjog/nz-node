@@ -18,8 +18,8 @@ module.exports = {
   // in the defaults object.
   connectionString: undefined,
 
-  // database port
-  port: 5432,
+  // database port (Netezza default is 5480)
+  port: 5480,
 
   // number of rows to return at a time from a prepared statement's
   // portal. 0 will return all rows at once

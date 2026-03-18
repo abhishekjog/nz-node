@@ -6,7 +6,7 @@
  */
 
 // Version format: Release X.Y.Z.W
-const NZ_NODE_CLIENT_VERSION = 'Release 1.0.0.0'
+const NZ_NODE_CLIENT_VERSION = 'Release 1.0.1.0'
 
 module.exports = {
   NZ_NODE_CLIENT_VERSION,
